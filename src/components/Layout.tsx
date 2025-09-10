@@ -22,7 +22,9 @@ import {
   Home,
   Bookmark,
   Cloud,
-  CloudOff
+  CloudOff,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -55,6 +57,7 @@ function useDataSync() {
 
 export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
   const { stores, currentStore, setCurrentStore } = useStore();
@@ -66,7 +69,20 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   // Detectar el tamaño de pantalla
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 1024);
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      
+      // En móvil, siempre colapsar el sidebar por defecto
+      if (mobile) {
+        setSidebarCollapsed(true);
+      } else {
+        // En desktop, restaurar el estado del sidebar
+        const savedState = localStorage.getItem('sidebarCollapsed');
+        if (savedState !== null) {
+          setSidebarCollapsed(savedState === 'true');
+        }
+      }
+      
       if (window.innerWidth >= 1024) {
         setSidebarOpen(false);
       }
@@ -76,6 +92,13 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Guardar el estado de colapso en localStorage
+  useEffect(() => {
+    if (!isMobile) {
+      localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+    }
+  }, [sidebarCollapsed, isMobile]);
 
   // Cerrar sidebar cuando se hace clic fuera en móvil
   useEffect(() => {
@@ -125,6 +148,11 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     }
   };
 
+  // ✅ Función para alternar el estado del sidebar
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
   // ✅ Componente de estado de conexión simplificado
   const ConnectionStatus = ({ className = "" }) => {
     const statusIcon = isConnected ? (
@@ -144,8 +172,28 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     );
   };
 
-  // ✅ Componente de elemento de navegación SIN contador
-  const NavigationItem = ({ item, isMobile = false }: { item: any, isMobile?: boolean }) => {
+  // ✅ Componente de elemento de navegación para sidebar colapsado (solo ícono)
+  const CollapsedNavigationItem = ({ item }: { item: any }) => {
+    const active = currentPage === item.id;
+    
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleNavigation(item.id)}
+        className={`w-full flex items-center justify-center p-3 my-1 rounded-lg transition-all duration-200 ${
+          active 
+            ? 'bg-blue-50 text-blue-700 shadow-sm' 
+            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+        }`}
+        title={item.name}
+      >
+        <item.icon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-gray-500'}`} />
+      </button>
+    );
+  };
+
+  // ✅ Componente de elemento de navegación para sidebar expandido
+  const ExpandedNavigationItem = ({ item, isMobile = false }: { item: any, isMobile?: boolean }) => {
     const baseClasses = `w-full flex items-center px-3 py-3 text-left font-medium rounded-lg transition-all duration-200 ${
       isMobile ? 'text-sm' : 'text-sm xl:text-base xl:px-4'
     }`;
@@ -249,7 +297,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
               {/* Navigation items */}
               <div className="space-y-1 mb-4">
                 {filteredNavigation.map((item) => (
-                  <NavigationItem key={item.id} item={item} isMobile={true} />
+                  <ExpandedNavigationItem key={item.id} item={item} isMobile={true} />
                 ))}
               </div>
 
@@ -272,20 +320,30 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 xl:w-72 lg:flex-col">
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ease-in-out ${
+        sidebarCollapsed ? 'lg:w-16 xl:w-16' : 'lg:w-64 xl:w-72'
+      }`}>
         <div className="flex flex-col flex-grow bg-white shadow-lg border-r border-gray-200 h-full">
           {/* Desktop header - FIJO */}
-          <div className="flex-shrink-0 p-6 border-b border-gray-200">
-            <h1 className="text-xl xl:text-2xl font-bold text-gray-900">POS Sistema</h1>
-            <div className="mt-2 text-sm text-gray-600">
-              {user?.username} • {user?.role === 'admin' ? 'Administrador' : 'Empleado'}
-            </div>
-            {/* ✅ Estado de conexión en desktop */}
-            <ConnectionStatus className="mt-3" />
+          <div className={`flex-shrink-0 p-4 border-b border-gray-200 ${sidebarCollapsed ? 'px-3' : 'px-6'}`}>
+            {!sidebarCollapsed ? (
+              <>
+                <h1 className="text-xl xl:text-2xl font-bold text-gray-900">POS Sistema</h1>
+                <div className="mt-2 text-sm text-gray-600">
+                  {user?.username} • {user?.role === 'admin' ? 'Administrador' : 'Empleado'}
+                </div>
+                {/* ✅ Estado de conexión en desktop */}
+                <ConnectionStatus className="mt-3" />
+              </>
+            ) : (
+              <div className="flex justify-center">
+                <div className="text-xl font-bold text-blue-600">POS</div>
+              </div>
+            )}
           </div>
           
-          {/* Desktop store selector - FIJO */}
-          {currentStore && (
+          {/* Desktop store selector - FIJO (solo visible cuando está expandido) */}
+          {currentStore && !sidebarCollapsed && (
             <div className="flex-shrink-0 p-4 xl:p-6 border-b border-gray-200 bg-gray-50">
               <label className="block text-xs font-medium text-gray-500 mb-2">
                 {user?.role === 'admin' ? 'TIENDA ACTUAL' : 'TIENDA'}
@@ -310,34 +368,59 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
 
           {/* Desktop navigation + logout - CON SCROLL */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="py-4 xl:py-6 px-3 xl:px-4">
+            <div className={`py-4 ${sidebarCollapsed ? 'px-2' : 'px-3 xl:px-4'}`}>
               {/* Navigation items */}
-              <div className="space-y-1 mb-6">
+              <div className={`${sidebarCollapsed ? 'space-y-0' : 'space-y-1'} mb-6`}>
                 {filteredNavigation.map((item) => (
-                  <NavigationItem key={item.id} item={item} />
+                  sidebarCollapsed ? (
+                    <CollapsedNavigationItem key={item.id} item={item} />
+                  ) : (
+                    <ExpandedNavigationItem key={item.id} item={item} />
+                  )
                 ))}
               </div>
 
               {/* Desktop logout dentro del área scrolleable */}
-              <div className="border-t border-gray-200 pt-4">
-                <button
-                  onClick={logout}
-                  className="w-full flex items-center px-3 xl:px-4 py-3 xl:py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm xl:text-base font-medium"
-                >
-                  <LogOut className="w-5 h-5 xl:w-6 xl:h-6 mr-3 xl:mr-4" />
-                  Cerrar Sesión
-                </button>
-              </div>
+              {!sidebarCollapsed && (
+                <div className="border-t border-gray-200 pt-4">
+                  <button
+                    onClick={logout}
+                    className="w-full flex items-center px-3 xl:px-4 py-3 xl:py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm xl:text-base font-medium"
+                  >
+                    <LogOut className="w-5 h-5 xl:w-6 xl:h-6 mr-3 xl:mr-4" />
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
             </div>
             
             {/* Espacio extra al final para asegurar scroll completo */}
             <div className="h-6"></div>
           </div>
+
+          {/* Botón para colapsar/expandir sidebar (solo desktop) */}
+          {!isMobile && (
+            <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={toggleSidebar}
+                className="w-full flex items-center justify-center p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
+                title={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
+              >
+                {sidebarCollapsed ? (
+                  <ChevronRight className="w-5 h-5" />
+                ) : (
+                  <ChevronLeft className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64 xl:pl-72">
+      <div className={`transition-all duration-300 ease-in-out ${
+        sidebarCollapsed ? 'lg:pl-16 xl:pl-16' : 'lg:pl-64 xl:pl-72'
+      }`}>
         {/* Mobile top bar */}
         <div className="bg-white shadow-sm border-b border-gray-200 lg:hidden">
           <div className="flex items-center justify-between p-4">
@@ -364,6 +447,19 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
             </div>
           </div>
         </div>
+
+        {/* Botón para expandir sidebar colapsado (solo desktop) */}
+        {sidebarCollapsed && !isMobile && (
+          <div className="hidden lg:block absolute top-4 left-4 z-10">
+            <button
+              onClick={toggleSidebar}
+              className="p-2 bg-white rounded-md shadow-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              title="Expandir menú"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 min-h-screen">
