@@ -99,12 +99,71 @@ export class OfflineService {
     }
   }
 
+  // Guardar venta offline
+  static async saveSaleOffline(sale: Sale): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['sales', 'sync_queue'], 'readwrite');
+      const salesStore = tx.objectStore('sales');
+      const queueStore = tx.objectStore('sync_queue');
+
+      // Guardar en la store local
+      salesStore.put(sale);
+
+      // Agregar a la cola de sincronización
+      queueStore.put({
+        id: crypto.randomUUID(),
+        type: 'sale',
+        data: sale,
+        priority: 1,
+        retries: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      tx.commit?.();
+      console.log('Venta guardada offline en IndexedDB:', sale.id);
+    } catch (error) {
+      console.error('Error guardando venta offline:', error);
+      throw error;
+    }
+  }
+
+  // Guardar gasto offline
+  static async saveExpenseOffline(expense: Expense): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['expenses', 'sync_queue'], 'readwrite');
+      const expensesStore = tx.objectStore('expenses');
+      const queueStore = tx.objectStore('sync_queue');
+
+      // Guardar en la store local
+      expensesStore.put(expense);
+
+      // Agregar a la cola de sincronización
+      queueStore.put({
+        id: crypto.randomUUID(),
+        type: 'expense',
+        data: expense,
+        priority: 1,
+        retries: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      tx.commit?.();
+      console.log('Gasto guardado offline en IndexedDB:', expense.id);
+    } catch (error) {
+      console.error('Error guardando gasto offline:', error);
+      throw error;
+    }
+  }
+
   // Funciones para manejo de cola de sincronización
   static async getSyncQueue(): Promise<any[]> {
     try {
       const db = await this.getDB();
       
-      // Verificar que la object store existe
       if (!db.objectStoreNames.contains('sync_queue')) {
         console.warn('sync_queue object store no existe');
         return [];
@@ -153,9 +212,7 @@ export class OfflineService {
     }
   }
 
-  // ... (el resto de tus funciones permanecen igual, pero asegúrate de usar 'sync_queue' consistentemente)
-
-  // Función para verificar y crear object stores faltantes
+  // Verificar y crear object stores faltantes
   static async ensureObjectStores(): Promise<void> {
     const db = await this.getDB();
     const requiredStores = [
