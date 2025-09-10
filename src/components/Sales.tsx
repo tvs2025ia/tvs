@@ -23,11 +23,12 @@ import {
   Plus,
   TrendingUp,
   Smile,
-  BarChart3
+  BarChart3,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export function Sales() {
-  const { sales, users, customers, getActiveReceiptTemplate, updateSale, deleteSale, paymentMethods } = useData();
+  const { sales, users, customers, getActiveReceiptTemplate, updateSale, deleteSale, paymentMethods, products } = useData();
   const { currentStore } = useStore();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,6 +96,11 @@ export function Sales() {
     if (!customerId) return 'Venta rápida';
     const customer = customers.find(c => c.id === customerId);
     return customer?.name || 'Cliente desconocido';
+  };
+
+  const getProductImage = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product?.image || null;
   };
 
   const getTotalsByPeriod = () => {
@@ -194,28 +200,53 @@ export function Sales() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Sale Information */}
-              <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                  <FileText className="w-5 h-5 mr-2" />
-                  Información de la Venta
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Fecha:</span>
-                    <span className="font-medium">{new Date(sale.date).toLocaleString()}</span>
+              {/* Customer and Payment Information */}
+              <div className="space-y-4">
+                {/* Customer Information */}
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                    <User className="w-5 h-5 mr-2" />
+                    Información del Cliente
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Cliente:</span>
+                      <span className="font-medium">{customer?.name || 'Venta rápida'}</span>
+                    </div>
+                    {customer?.email && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email:</span>
+                        <span className="font-medium">{customer.email}</span>
+                      </div>
+                    )}
+                    {customer?.phone && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Teléfono:</span>
+                        <span className="font-medium">{customer.phone}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Vendedor:</span>
-                    <span className="font-medium">{employee?.username}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cliente:</span>
-                    <span className="font-medium">{customer?.name || 'Venta rápida'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Método de Pago:</span>
-                    <span className="font-medium">{sale.paymentMethod}</span>
+                </div>
+
+                {/* Sale Information */}
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                    <FileText className="w-5 h-5 mr-2" />
+                    Información de la Venta
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Fecha:</span>
+                      <span className="font-medium">{new Date(sale.date).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vendedor:</span>
+                      <span className="font-medium">{employee?.username}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Método de Pago:</span>
+                      <span className="font-medium">{sale.paymentMethod}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -247,18 +278,6 @@ export function Sales() {
                     <span>Total:</span>
                     <span>{formatCurrency(sale.total)}</span>
                   </div>
-                  {sale.paymentMethodDiscount > 0 && (
-                    <>
-                      <div className="flex justify-between text-orange-600 text-sm">
-                        <span>Deducción {sale.paymentMethod} ({sale.paymentMethodDiscount}%):</span>
-                        <span>-{formatCurrency(sale.total * (sale.paymentMethodDiscount / 100))}</span>
-                      </div>
-                      <div className="flex justify-between text-green-600 font-semibold">
-                        <span>Total Neto:</span>
-                        <span>{formatCurrency(sale.netTotal)}</span>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
@@ -269,27 +288,35 @@ export function Sales() {
                 <Package className="w-5 h-5 mr-2" />
                 Productos Vendidos
               </h4>
-              <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Producto</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Cantidad</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Precio Unit.</th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {sale.items.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.productName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{item.quantity}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(item.unitPrice)}</td>
-                        <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{formatCurrency(item.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                {sale.items.map((item, index) => {
+                  const productImage = getProductImage(item.productId);
+                  return (
+                    <div key={index} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-4">
+                        {productImage ? (
+                          <img 
+                            src={productImage} 
+                            alt={item.productName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <ImageIcon className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-medium text-gray-900 truncate">{item.productName}</h5>
+                        <p className="text-sm text-gray-500">Cantidad: {item.quantity}</p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className="font-medium text-gray-900">{formatCurrency(item.unitPrice)} c/u</p>
+                        <p className="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -531,82 +558,8 @@ export function Sales() {
                 </div>
               </div>
 
-              {/* Items */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">Productos</h4>
-                  <button
-                    type="button"
-                    onClick={addItem}
-                    className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Agregar</span>
-                  </button>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Producto</th>
-                        <th className="px-4 py-2 text-center text-sm font-medium text-gray-600">Cantidad</th>
-                        <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Precio Unit.</th>
-                        <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Total</th>
-                        <th className="px-4 py-2 text-center text-sm font-medium text-gray-600">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {editingItems.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2">
-                            <input
-                              type="text"
-                              value={item.productName}
-                              onChange={(e) => updateItem(index, 'productName', e.target.value)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 transition-colors"
-                            />
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-1 focus:ring-blue-500 transition-colors"
-                              min="1"
-                            />
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            <input
-                              type="number"
-                              value={item.unitPrice}
-                              onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
-                              className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-500 transition-colors"
-                              min="0"
-                              step="0.01"
-                            />
-                          </td>
-                          <td className="px-4 py-2 text-right text-sm font-medium">
-                            {formatCurrency(item.total)}
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="text-red-500 hover:text-red-700 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Customer and Payment Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Descuento
@@ -634,11 +587,120 @@ export function Sales() {
                     step="0.01"
                   />
                 </div>
+              </div>
 
-                <div className="flex items-end">
-                  <div className="w-full text-right">
-                    <p className="text-sm text-gray-600">Subtotal: {formatCurrency(formData.subtotal)}</p>
-                    <p className="text-lg font-bold text-gray-900">Total: {formatCurrency(formData.total)}</p>
+              {/* Items */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">Productos</h4>
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {editingItems.map((item, index) => {
+                    const productImage = getProductImage(item.productId);
+                    return (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex flex-col md:flex-row md:items-center gap-4">
+                          <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
+                            {productImage ? (
+                              <img 
+                                src={productImage} 
+                                alt={item.productName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                <ImageIcon className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                              <input
+                                type="text"
+                                value={item.productName}
+                                onChange={(e) => updateItem(index, 'productName', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 transition-colors"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-1 focus:ring-blue-500 transition-colors"
+                                min="1"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Precio Unit.</label>
+                              <input
+                                type="number"
+                                value={item.unitPrice}
+                                onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-500 transition-colors"
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end justify-between">
+                            <div className="text-sm font-medium text-gray-900">
+                              Total: {formatCurrency(item.total)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(index)}
+                              className="text-red-500 hover:text-red-700 transition-colors mt-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-end">
+                  <div className="w-full md:w-1/3 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium">{formatCurrency(formData.subtotal)}</span>
+                    </div>
+                    {formData.discount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Descuento:</span>
+                        <span>-{formatCurrency(formData.discount)}</span>
+                      </div>
+                    )}
+                    {formData.shippingCost > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Envío:</span>
+                        <span className="font-medium">{formatCurrency(formData.shippingCost)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
+                      <span>Total:</span>
+                      <span>{formatCurrency(formData.total)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1045,7 +1107,7 @@ export function Sales() {
 
             <hr className="my-2" />
 
-            {/* Totals */}
+            {/* Totals - Showing only gross total, not net total */}
             {activeReceiptTemplate?.showTotals && (
               <>
                 <div className="flex justify-between"><span>Subtotal:</span><span>{formatCurrency(printingSale.subtotal)}</span></div>
@@ -1056,18 +1118,6 @@ export function Sales() {
                   <div className="flex justify-between"><span>Envío:</span><span>{formatCurrency(printingSale.shippingCost)}</span></div>
                 )}
                 <div className="flex justify-between font-bold"><span>Total:</span><span>{formatCurrency(printingSale.total)}</span></div>
-                {printingSale.paymentMethodDiscount > 0 && (
-                  <>
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Desc. {printingSale.paymentMethod}:</span>
-                      <span>-{formatCurrency(printingSale.total * (printingSale.paymentMethodDiscount / 100))}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-green-600">
-                      <span>Total Neto:</span>
-                      <span>{formatCurrency(printingSale.netTotal)}</span>
-                    </div>
-                  </>
-                )}
               </>
             )}
 
