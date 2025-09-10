@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
-import { useData } from '../contexts/DataContext'; // ✅ Agregar useData
+import { useData } from '../contexts/DataContext';
 import { OfflineIndicator } from './OfflineIndicator';
 import { 
   Menu, 
@@ -21,11 +21,8 @@ import {
   BarChart3,
   Home,
   Bookmark,
-  Wifi,
-  WifiOff,
-  AlertCircle,
   Cloud,
-  CloudOff // ✅ Nuevos iconos para estado offline
+  CloudOff
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -34,40 +31,26 @@ interface LayoutProps {
   onPageChange: (page: string) => void;
 }
 
-// ✅ Hook de sincronización integrado
+// ✅ Hook de sincronización simplificado
 function useDataSync() {
   const { user } = useAuth();
-  const { refreshData, isConnected, isLoading } = useData();
-  const [lastUserData, setLastUserData] = useState<{userId: string | null, storeId: string | null}>({
-    userId: null,
-    storeId: null
-  });
+  const { refreshData, isConnected } = useData();
+  const [lastUserId, setLastUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUserId = user?.id || null;
-    const currentStoreId = user?.storeId || null;
 
-    // Verificar si cambió el usuario o la tienda
-    const userChanged = lastUserData.userId !== currentUserId;
-    const storeChanged = lastUserData.storeId !== currentStoreId;
-
-    if (user && isConnected && (userChanged || storeChanged)) {
-      console.log('🔄 Layout: Detectado cambio de usuario/tienda, refrescando datos...', {
-        userId: currentUserId,
-        storeId: currentStoreId,
-        userChanged,
-        storeChanged
-      });
-
-      // Refrescar datos
+    // Verificar si cambió el usuario
+    if (user && isConnected && lastUserId !== currentUserId) {
+      console.log('🔄 Layout: Detectado cambio de usuario, refrescando datos...');
       refreshData();
     }
 
     // Actualizar estado previo
-    setLastUserData({ userId: currentUserId, storeId: currentStoreId });
-  }, [user, isConnected, refreshData, lastUserData.userId, lastUserData.storeId]);
+    setLastUserId(currentUserId);
+  }, [user, isConnected, refreshData, lastUserId]);
 
-  return { isLoading, isConnected };
+  return { isConnected };
 }
 
 export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
@@ -75,16 +58,15 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
   const { stores, currentStore, setCurrentStore } = useStore();
-  const { products, sales, customers, isLoading: dataLoading } = useData(); // ✅ Acceder a datos para mostrar contadores
+  const { isConnected } = useData();
   
-  // ✅ Usar hook de sincronización
-  const { isLoading: syncLoading, isConnected } = useDataSync();
+  // ✅ Usar hook de sincronización simplificado
+  const syncStatus = useDataSync();
 
   // Detectar el tamaño de pantalla
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 1024);
-      // Cerrar sidebar en móvil cuando se redimensiona a desktop
       if (window.innerWidth >= 1024) {
         setSidebarOpen(false);
       }
@@ -107,20 +89,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
       document.body.style.overflow = 'unset';
     };
   }, [sidebarOpen, isMobile]);
-
-  // ✅ Agregar contadores a los elementos de navegación
-  const getItemCounter = (itemId: string) => {
-    switch (itemId) {
-      case 'inventory':
-        return products.length;
-      case 'sales':
-        return sales.length;
-      case 'customers':
-        return customers.length;
-      default:
-        return null;
-    }
-  };
 
   const navigation = [
     { name: 'Dashboard', id: 'dashboard', icon: Home, admin: false },
@@ -152,13 +120,12 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const handleStoreChange = (storeId: string) => {
     const store = stores.find(s => s.id === storeId);
     if (store) {
-      console.log('🏪 Layout: Cambiando tienda de', currentStore?.name, 'a', store.name);
+      console.log('🏪 Layout: Cambiando tienda a', store.name);
       setCurrentStore(store);
-      // El hook useDataSync detectará este cambio y refrescará los datos
     }
   };
 
-  // ✅ Componente de estado de conexión
+  // ✅ Componente de estado de conexión simplificado
   const ConnectionStatus = ({ className = "" }) => {
     const statusIcon = isConnected ? (
       <Cloud className="w-4 h-4 text-green-500" />
@@ -170,20 +137,16 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     const statusColor = isConnected ? 'text-green-600' : 'text-orange-600';
     
     return (
-    <div className={`flex items-center space-x-2 ${className}`}>
-      {statusIcon}
-      <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
-      {(dataLoading || syncLoading) && (
-        <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      )}
-    </div>
+      <div className={`flex items-center space-x-2 ${className}`}>
+        {statusIcon}
+        <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
+      </div>
     );
   };
 
-  // ✅ Componente de elemento de navegación con contador
+  // ✅ Componente de elemento de navegación SIN contador
   const NavigationItem = ({ item, isMobile = false }: { item: any, isMobile?: boolean }) => {
-    const counter = getItemCounter(item.id);
-    const baseClasses = `w-full flex items-center justify-between px-3 py-3 text-left font-medium rounded-lg transition-all duration-200 ${
+    const baseClasses = `w-full flex items-center px-3 py-3 text-left font-medium rounded-lg transition-all duration-200 ${
       isMobile ? 'text-sm' : 'text-sm xl:text-base xl:px-4'
     }`;
     
@@ -203,15 +166,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
           } ${currentPage === item.id ? 'text-blue-600' : 'text-gray-500'}`} />
           <span className="truncate">{item.name}</span>
         </div>
-        {counter !== null && counter > 0 && (
-          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
-            currentPage === item.id 
-              ? 'bg-blue-100 text-blue-700' 
-              : 'bg-gray-200 text-gray-600'
-          }`}>
-            {counter}
-          </span>
-        )}
       </button>
     );
   };
@@ -276,7 +230,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
                   value={currentStore.id}
                   onChange={(e) => handleStoreChange(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={dataLoading || syncLoading} // ✅ Deshabilitar durante carga
                 >
                   {stores.map(store => (
                     <option key={store.id} value={store.id}>{store.name}</option>
@@ -342,7 +295,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
                   value={currentStore.id}
                   onChange={(e) => handleStoreChange(e.target.value)}
                   className="w-full p-2 xl:p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  disabled={dataLoading || syncLoading} // ✅ Deshabilitar durante carga
                 >
                   {stores.map(store => (
                     <option key={store.id} value={store.id}>{store.name}</option>
