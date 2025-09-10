@@ -10,7 +10,9 @@ import {
   Clock,
   X,
   Eye,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export function OfflineIndicator() {
@@ -77,25 +79,27 @@ export function OfflineIndicator() {
   };
 
   const getStatusIcon = () => {
-    if (!isOnline) return <WifiOff className="w-4 h-4" />;
-    if (syncStatus?.type === 'syncing' || syncing) return <RefreshCw className="w-4 h-4 animate-spin" />;
-    if (pendingSyncCount > 0) return <Clock className="w-4 h-4" />;
-    return <Wifi className="w-4 h-4" />;
+    if (!isOnline) return <WifiOff className="w-3 h-3" />;
+    if (syncStatus?.type === 'syncing' || syncing) return <RefreshCw className="w-3 h-3 animate-spin" />;
+    if (pendingSyncCount > 0) return <Clock className="w-3 h-3" />;
+    return <Wifi className="w-3 h-3" />;
   };
 
   return (
     <>
-      {/* Main indicator */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3">
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${getStatusColor()}`}></div>
+      {/* Main compact indicator - Fixed at bottom right */}
+      <div className="fixed bottom-4 right-4 z-40">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          {/* Compact header */}
+          <div className="flex items-center justify-between p-2">
             <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
               {getStatusIcon()}
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-xs font-medium text-gray-700">
                 {getStatusText()}
               </span>
             </div>
+            
             <div className="flex items-center space-x-1">
               {isOnline && pendingSyncCount > 0 && (
                 <button
@@ -104,27 +108,93 @@ export function OfflineIndicator() {
                   className="p-1 text-blue-600 hover:text-blue-800 disabled:opacity-50"
                   title="Sincronizar ahora"
                 >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
                 </button>
               )}
+              
               <button
                 onClick={handleShowDetails}
                 className="p-1 text-gray-600 hover:text-gray-800"
-                title="Ver detalles"
+                title={showDetails ? "Ocultar detalles" : "Ver detalles"}
               >
-                <Eye className="w-4 h-4" />
+                {showDetails ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronUp className="w-3 h-3" />
+                )}
               </button>
             </div>
           </div>
+
+          {/* Expandable details section */}
+          {showDetails && (
+            <div className="px-2 pb-2 border-t border-gray-100">
+              <div className="space-y-2 pt-2">
+                {/* Connection status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Conexión:</span>
+                  <span className="text-xs font-medium">
+                    {isOnline ? 'Conectado' : 'Sin conexión'}
+                  </span>
+                </div>
+
+                {/* Pending items */}
+                {pendingSyncCount > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">Pendientes:</span>
+                    <span className="text-xs font-medium text-orange-600">
+                      {pendingSyncCount}
+                    </span>
+                  </div>
+                )}
+
+                {/* Last sync result */}
+                {lastSyncResult && (
+                  <div className="text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Última sync:</span>
+                      <span className="font-medium">
+                        {lastSyncResult.success} ok
+                        {lastSyncResult.errors > 0 && `, ${lastSyncResult.errors} err`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick actions */}
+                <div className="flex space-x-1 pt-1">
+                  {isOnline && pendingSyncCount > 0 && (
+                    <button
+                      onClick={handleManualSync}
+                      disabled={syncing}
+                      className="flex-1 bg-blue-100 text-blue-700 text-xs py-1 px-2 rounded hover:bg-blue-200 disabled:opacity-50 transition-colors flex items-center justify-center"
+                      title="Sincronizar ahora"
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+                      Sync
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleClearOfflineData}
+                    className="bg-red-100 text-red-700 text-xs py-1 px-2 rounded hover:bg-red-200 transition-colors flex items-center justify-center"
+                    title="Limpiar datos offline"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Details modal */}
-      {showDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+      {/* Full details modal for mobile */}
+      {showDetails && window.innerWidth < 768 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-4 md:hidden">
+          <div className="bg-white rounded-t-xl w-full max-w-md max-h-[70vh] overflow-auto">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-900">Estado de Sincronización</h3>
                 <button 
                   onClick={() => setShowDetails(false)}
