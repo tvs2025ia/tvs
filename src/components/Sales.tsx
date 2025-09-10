@@ -20,7 +20,10 @@ import {
   Upload,
   Edit3,
   Trash2,
-  Plus
+  Plus,
+  TrendingUp,
+  Smile,
+  BarChart3
 } from 'lucide-react';
 
 export function Sales() {
@@ -35,6 +38,7 @@ export function Sales() {
   const [printingSale, setPrintingSale] = useState<Sale | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const activeReceiptTemplate = getActiveReceiptTemplate(currentStore?.id || '11111111-1111-1111-1111-111111111111');
   const isAdmin = user?.role === 'admin';
@@ -154,11 +158,16 @@ export function Sales() {
     );
 
     if (confirmed) {
+      setIsDeleting(sale.id);
       try {
         await deleteSale(sale.id);
-        alert('Venta eliminada exitosamente');
+        // Pequeña animación de éxito
+        setTimeout(() => {
+          setIsDeleting(null);
+        }, 1000);
       } catch (error) {
         alert('Error al eliminar la venta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+        setIsDeleting(null);
       }
     }
   };
@@ -172,23 +181,26 @@ export function Sales() {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Factura {sale.invoiceNumber}</h3>
+                <h3 className="text-2xl font-bold text-gray-900">Factura {sale.invoiceNumber}</h3>
                 <p className="text-gray-600">Venta #{sale.id}</p>
               </div>
-              <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <button onClick={onClose} className="text-gray-500 hover:text-gray-700 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Sale Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Información de la Venta</h4>
-                <div className="space-y-2">
+              <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Información de la Venta
+                </h4>
+                <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fecha:</span>
                     <span className="font-medium">{new Date(sale.date).toLocaleString()}</span>
@@ -209,9 +221,12 @@ export function Sales() {
               </div>
 
               {/* Payment Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Información de Pago</h4>
-                <div className="space-y-2">
+              <div className="bg-green-50 rounded-xl p-5 border border-green-100">
+                <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2" />
+                  Información de Pago
+                </h4>
+                <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal:</span>
                     <span className="font-medium">{formatCurrency(sale.subtotal)}</span>
@@ -250,9 +265,12 @@ export function Sales() {
 
             {/* Items */}
             <div className="mb-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Productos Vendidos</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full border border-gray-200 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <Package className="w-5 h-5 mr-2" />
+                Productos Vendidos
+              </h4>
+              <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Producto</th>
@@ -263,7 +281,7 @@ export function Sales() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {sale.items.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.productName}</td>
                         <td className="px-4 py-3 text-sm text-gray-600 text-center">{item.quantity}</td>
                         <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(item.unitPrice)}</td>
@@ -279,7 +297,7 @@ export function Sales() {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={onClose}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Cerrar
               </button>
@@ -288,14 +306,14 @@ export function Sales() {
                   handlePrintReceipt(sale);
                   onClose();
                 }}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2 font-medium"
               >
                 <Download className="w-4 h-4" />
                 <span>Recibo Térmico</span>
               </button>
               <button
                 onClick={() => window.print()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2 font-medium"
               >
                 <Download className="w-4 h-4" />
                 <span>Imprimir Detalle</span>
@@ -414,11 +432,11 @@ export function Sales() {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Editar Venta</h3>
-              <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <h3 className="text-2xl font-bold text-gray-900">Editar Venta</h3>
+              <button onClick={onClose} className="text-gray-500 hover:text-gray-700 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -433,7 +451,7 @@ export function Sales() {
                     type="text"
                     value={formData.invoiceNumber}
                     onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     required
                   />
                 </div>
@@ -445,7 +463,7 @@ export function Sales() {
                   <select
                     value={formData.customerId}
                     onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   >
                     <option value="">Venta rápida</option>
                     {customers.map(customer => (
@@ -461,7 +479,7 @@ export function Sales() {
                   <select
                     value={formData.employeeId}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     required
                   >
                     {users.map(user => (
@@ -477,7 +495,7 @@ export function Sales() {
                   <select
                     value={formData.paymentMethod}
                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     required
                   >
                     {paymentMethods.filter(pm => pm.isActive).map(method => (
@@ -494,7 +512,7 @@ export function Sales() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     required
                   />
                 </div>
@@ -507,7 +525,7 @@ export function Sales() {
                     type="time"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     required
                   />
                 </div>
@@ -520,7 +538,7 @@ export function Sales() {
                   <button
                     type="button"
                     onClick={addItem}
-                    className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 flex items-center space-x-1"
+                    className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-1"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Agregar</span>
@@ -546,7 +564,7 @@ export function Sales() {
                               type="text"
                               value={item.productName}
                               onChange={(e) => updateItem(index, 'productName', e.target.value)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 transition-colors"
                             />
                           </td>
                           <td className="px-4 py-2 text-center">
@@ -554,7 +572,7 @@ export function Sales() {
                               type="number"
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-1 focus:ring-blue-500 transition-colors"
                               min="1"
                             />
                           </td>
@@ -563,7 +581,7 @@ export function Sales() {
                               type="number"
                               value={item.unitPrice}
                               onChange={(e) => updateItem(index, 'unitPrice', Number(e.target.value))}
-                              className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                              className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-right focus:ring-1 focus:ring-blue-500 transition-colors"
                               min="0"
                               step="0.01"
                             />
@@ -575,7 +593,7 @@ export function Sales() {
                             <button
                               type="button"
                               onClick={() => removeItem(index)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-500 hover:text-red-700 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -597,7 +615,7 @@ export function Sales() {
                     type="number"
                     value={formData.discount}
                     onChange={(e) => setFormData({ ...formData, discount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     min="0"
                     step="0.01"
                   />
@@ -611,7 +629,7 @@ export function Sales() {
                     type="number"
                     value={formData.shippingCost}
                     onChange={(e) => setFormData({ ...formData, shippingCost: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     min="0"
                     step="0.01"
                   />
@@ -629,13 +647,13 @@ export function Sales() {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
                 >
                   Actualizar Venta
                 </button>
@@ -650,22 +668,25 @@ export function Sales() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registro de Ventas</h1>
-          <p className="text-gray-600 mt-1">{currentStore?.name}</p>
+          <h1 className="text-3xl font-bold text-gray-900">Registro de Ventas</h1>
+          <p className="text-gray-600 mt-1 flex items-center">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+            {currentStore?.name}
+          </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           {isAdmin && (
             <button
               onClick={() => setShowBulkUpload(true)}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2 shadow-sm hover:shadow-md"
             >
               <Upload className="w-5 h-5" />
               <span>Carga Masiva</span>
             </button>
           )}
-          <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+          <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2 shadow-sm hover:shadow-md">
             <Download className="w-5 h-5" />
             <span>Exportar</span>
           </button>
@@ -674,42 +695,50 @@ export function Sales() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-sm p-6 border border-blue-100">
           <div className="flex items-center">
-            <ShoppingCart className="w-8 h-8 text-blue-600 mr-3" />
+            <div className="p-2 bg-blue-100 rounded-lg mr-4">
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Ventas</p>
-              <p className="text-2xl font-bold text-gray-900">{totalSales}</p>
+              <p className="text-sm font-medium text-blue-700">Total Ventas</p>
+              <p className="text-2xl font-bold text-blue-900">{totalSales}</p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-sm p-6 border border-green-100">
           <div className="flex items-center">
-            <DollarSign className="w-8 h-8 text-green-600 mr-3" />
+            <div className="p-2 bg-green-100 rounded-lg mr-4">
+              <DollarSign className="w-6 h-6 text-green-600" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Ingresos</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
+              <p className="text-sm font-medium text-green-700">Ingresos</p>
+              <p className="text-2xl font-bold text-green-900">{formatCurrency(totalRevenue)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-sm p-6 border border-purple-100">
           <div className="flex items-center">
-            <Package className="w-8 h-8 text-purple-600 mr-3" />
+            <div className="p-2 bg-purple-100 rounded-lg mr-4">
+              <Package className="w-6 h-6 text-purple-600" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Productos Vendidos</p>
-              <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
+              <p className="text-sm font-medium text-purple-700">Productos Vendidos</p>
+              <p className="text-2xl font-bold text-purple-900">{totalItems}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl shadow-sm p-6 border border-orange-100">
           <div className="flex items-center">
-            <FileText className="w-8 h-8 text-orange-600 mr-3" />
+            <div className="p-2 bg-orange-100 rounded-lg mr-4">
+              <BarChart3 className="w-6 h-6 text-orange-600" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Ticket Promedio</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-orange-700">Ticket Promedio</p>
+              <p className="text-2xl font-bold text-orange-900">
                 {totalSales > 0 ? formatCurrency(totalRevenue / totalSales) : formatCurrency(0)}
               </p>
             </div>
@@ -718,7 +747,11 @@ export function Sales() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Filter className="w-5 h-5 mr-2 text-blue-500" />
+          Filtros de Búsqueda
+        </h3>
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-64">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -731,7 +764,7 @@ export function Sales() {
                 placeholder="Buscar por número de factura o ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               />
             </div>
           </div>
@@ -743,7 +776,7 @@ export function Sales() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
             >
               <option value="">Todos los años</option>
               {availableYears.map(year => (
@@ -759,7 +792,7 @@ export function Sales() {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
             >
               <option value="">Todos los meses</option>
               {months.map(month => (
@@ -774,55 +807,68 @@ export function Sales() {
               setSelectedYear(new Date().getFullYear().toString());
               setSelectedMonth('');
             }}
-            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center space-x-2"
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
           >
-            <Filter className="w-4 h-4" />
+            <X className="w-4 h-4" />
             <span>Limpiar</span>
           </button>
         </div>
       </div>
 
+      {/* Results Summary */}
+      {filteredSales.length > 0 && (
+        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+          <p className="text-blue-700 text-sm font-medium">
+            Mostrando <span className="font-bold">{filteredSales.length}</span> ventas
+            {selectedYear && ` del año ${selectedYear}`}
+            {selectedMonth && `, mes de ${months.find(m => m.value === selectedMonth)?.label}`}
+          </p>
+        </div>
+      )}
+
       {/* Sales Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Factura
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Vendedor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Productos
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Método de Pago
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredSales.map(sale => (
-                <tr key={sale.id} className="hover:bg-gray-50">
+                <tr key={sale.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <FileText className="w-5 h-5 text-blue-500 mr-2" />
+                      <div className="p-1 bg-blue-100 rounded mr-3 group-hover:bg-blue-200 transition-colors">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                      </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{sale.invoiceNumber}</div>
-                        <div className="text-sm text-gray-500">#{sale.id}</div>
+                        <div className="text-xs text-gray-500">#{sale.id.substring(0, 8)}...</div>
                       </div>
                     </div>
                   </td>
@@ -833,7 +879,7 @@ export function Sales() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {getEmployeeName(sale.employeeId)}
                     </span>
                   </td>
@@ -846,7 +892,7 @@ export function Sales() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       {sale.paymentMethod}
                     </span>
                   </td>
@@ -873,33 +919,38 @@ export function Sales() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setViewingSale(sale)}
-                        className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                        className="text-blue-500 hover:text-blue-700 transition-colors flex items-center space-x-1 p-1 rounded hover:bg-blue-50"
+                        title="Ver detalles"
                       >
                         <Eye className="w-4 h-4" />
-                        <span>Ver</span>
                       </button>
                       <button
                         onClick={() => handlePrintReceipt(sale)}
-                        className="text-green-600 hover:text-green-900 flex items-center space-x-1"
+                        className="text-green-500 hover:text-green-700 transition-colors flex items-center space-x-1 p-1 rounded hover:bg-green-50"
+                        title="Imprimir recibo"
                       >
                         <Download className="w-4 h-4" />
-                        <span>Recibo</span>
                       </button>
                       {isAdmin && (
                         <>
                           <button
                             onClick={() => setEditingSale(sale)}
-                            className="text-orange-600 hover:text-orange-900 flex items-center space-x-1"
+                            className="text-orange-500 hover:text-orange-700 transition-colors flex items-center space-x-1 p-1 rounded hover:bg-orange-50"
+                            title="Editar venta"
                           >
                             <Edit3 className="w-4 h-4" />
-                            <span>Editar</span>
                           </button>
                           <button
                             onClick={() => handleDeleteSale(sale)}
-                            className="text-red-600 hover:text-red-900 flex items-center space-x-1"
+                            className="text-red-500 hover:text-red-700 transition-colors flex items-center space-x-1 p-1 rounded hover:bg-red-50"
+                            disabled={isDeleting === sale.id}
+                            title="Eliminar venta"
                           >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Eliminar</span>
+                            {isDeleting === sale.id ? (
+                              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         </>
                       )}
@@ -912,12 +963,28 @@ export function Sales() {
         </div>
 
         {filteredSales.length === 0 && (
-          <div className="text-center py-12">
-            <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No se encontraron ventas</p>
-            <p className="text-gray-400 text-sm mt-2">
-              Ajusta los filtros o realiza algunas ventas para ver los registros
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+              <Smile className="w-8 h-8 text-blue-500" />
+            </div>
+            <p className="text-gray-500 text-lg font-medium">No se encontraron ventas</p>
+            <p className="text-gray-400 text-sm mt-2 max-w-md mx-auto">
+              {searchTerm || selectedMonth || selectedYear !== new Date().getFullYear().toString()
+                ? "Intenta ajustar los filtros para ver más resultados"
+                : "Realiza algunas ventas para ver los registros aquí"}
             </p>
+            {(searchTerm || selectedMonth || selectedYear !== new Date().getFullYear().toString()) && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedYear(new Date().getFullYear().toString());
+                  setSelectedMonth('');
+                }}
+                className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -933,7 +1000,7 @@ export function Sales() {
       {/* Thermal Receipt Modal */}
       {showReceiptModal && printingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-[320px] p-4 text-sm font-mono" id="sales-receipt">
+          <div className="bg-white rounded-2xl w-[320px] p-4 text-sm font-mono" id="sales-receipt">
             {/* Header */}
             {activeReceiptTemplate?.headerText && (
               <div className="text-center font-bold mb-2 whitespace-pre-line">
@@ -1019,13 +1086,13 @@ export function Sales() {
                   setShowReceiptModal(false);
                   setPrintingSale(null);
                 }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={printThermalReceipt}
-                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
               >
                 Imprimir
               </button>
