@@ -103,6 +103,11 @@ export function Sales() {
     return product?.image || null;
   };
 
+  const getProductCategory = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product?.category || 'Sin categoría';
+  };
+
   const getTotalsByPeriod = () => {
     const totalSales = filteredSales.length;
     const totalRevenue = filteredSales.reduce((sum, s) => sum + s.total, 0);
@@ -199,54 +204,52 @@ export function Sales() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Customer and Payment Information */}
-              <div className="space-y-4">
-                {/* Customer Information */}
-                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                    <User className="w-5 h-5 mr-2" />
-                    Información del Cliente
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Cliente:</span>
-                      <span className="font-medium">{customer?.name || 'Venta rápida'}</span>
-                    </div>
-                    {customer?.email && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Email:</span>
-                        <span className="font-medium">{customer.email}</span>
-                      </div>
-                    )}
-                    {customer?.phone && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Teléfono:</span>
-                        <span className="font-medium">{customer.phone}</span>
-                      </div>
-                    )}
+            {/* Customer, Discount and Shipping Information - Moved to top */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Customer Information */}
+              <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <User className="w-5 h-5 mr-2" />
+                  Información del Cliente
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Cliente:</span>
+                    <span className="font-medium">{customer?.name || 'Venta rápida'}</span>
                   </div>
+                  {customer?.email && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Email:</span>
+                      <span className="font-medium">{customer.email}</span>
+                    </div>
+                  )}
+                  {customer?.phone && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Teléfono:</span>
+                      <span className="font-medium">{customer.phone}</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Sale Information */}
-                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                    <FileText className="w-5 h-5 mr-2" />
-                    Información de la Venta
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Fecha:</span>
-                      <span className="font-medium">{new Date(sale.date).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vendedor:</span>
-                      <span className="font-medium">{employee?.username}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Método de Pago:</span>
-                      <span className="font-medium">{sale.paymentMethod}</span>
-                    </div>
+              {/* Sale Information */}
+              <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Información de la Venta
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fecha:</span>
+                    <span className="font-medium">{new Date(sale.date).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vendedor:</span>
+                    <span className="font-medium">{employee?.username}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Método de Pago:</span>
+                    <span className="font-medium">{sale.paymentMethod}</span>
                   </div>
                 </div>
               </div>
@@ -282,7 +285,7 @@ export function Sales() {
               </div>
             </div>
 
-            {/* Items */}
+            {/* Items - Improved responsive design with images */}
             <div className="mb-6">
               <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                 <Package className="w-5 h-5 mr-2" />
@@ -291,9 +294,11 @@ export function Sales() {
               <div className="space-y-4">
                 {sale.items.map((item, index) => {
                   const productImage = getProductImage(item.productId);
+                  const productCategory = getProductCategory(item.productId);
+                  
                   return (
-                    <div key={index} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-4">
+                    <div key={index} className="flex flex-col sm:flex-row items-start p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden mr-4 mb-3 sm:mb-0">
                         {productImage ? (
                           <img 
                             src={productImage} 
@@ -306,13 +311,18 @@ export function Sales() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h5 className="font-medium text-gray-900 truncate">{item.productName}</h5>
-                        <p className="text-sm text-gray-500">Cantidad: {item.quantity}</p>
-                      </div>
-                      <div className="text-right ml-4">
-                        <p className="font-medium text-gray-900">{formatCurrency(item.unitPrice)} c/u</p>
-                        <p className="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
+                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="sm:col-span-2">
+                          <h5 className="font-medium text-gray-900 truncate">{item.productName}</h5>
+                          <p className="text-sm text-gray-500">{productCategory}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Cantidad: {item.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">{formatCurrency(item.unitPrice)} c/u</p>
+                          <p className="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -558,7 +568,7 @@ export function Sales() {
                 </div>
               </div>
 
-              {/* Customer and Payment Information */}
+              {/* Customer and Payment Information - Moved to top */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -589,7 +599,7 @@ export function Sales() {
                 </div>
               </div>
 
-              {/* Items */}
+              {/* Items - Improved responsive design */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-gray-900">Productos</h4>
@@ -606,6 +616,8 @@ export function Sales() {
                 <div className="space-y-3">
                   {editingItems.map((item, index) => {
                     const productImage = getProductImage(item.productId);
+                    const productCategory = getProductCategory(item.productId);
+                    
                     return (
                       <div key={index} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -632,6 +644,7 @@ export function Sales() {
                                 onChange={(e) => updateItem(index, 'productName', e.target.value)}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 transition-colors"
                               />
+                              <p className="text-xs text-gray-500 mt-1">{productCategory}</p>
                             </div>
                             
                             <div>
@@ -1059,7 +1072,7 @@ export function Sales() {
         />
       )}
 
-      {/* Thermal Receipt Modal */}
+      {/* Thermal Receipt Modal - Showing only gross total */}
       {showReceiptModal && printingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-[320px] p-4 text-sm font-mono" id="sales-receipt">
