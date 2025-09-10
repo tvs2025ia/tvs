@@ -23,6 +23,14 @@ interface DataContextType {
   isLoading: boolean;
   isConnected: boolean;
   connectionError: string | null;
+  // ✅ Nuevos estados para carga progresiva
+  hasInitialData: boolean;
+  loadingProgress: {
+    critical: number;
+    secondary: number;
+  };
+  criticalDataLoaded: boolean;
+  secondaryDataLoaded: boolean;
   dbService: any;
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
@@ -58,6 +66,9 @@ interface DataContextType {
   refreshData: () => Promise<void>;
   connectToDatabase: () => Promise<void>;
   retryConnection: () => Promise<void>;
+  // ✅ Nuevas funciones para carga progresiva
+  loadCriticalData: () => Promise<void>;
+  loadSecondaryData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -182,6 +193,16 @@ export function DataProvider({ children }: DataProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  
+  // ✅ Nuevos estados para carga progresiva
+  const [hasInitialData, setHasInitialData] = useState(false);
+  const [criticalDataLoaded, setCriticalDataLoaded] = useState(false);
+  const [secondaryDataLoaded, setSecondaryDataLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({
+    critical: 0,
+    secondary: 0
+  });
+  
   const dbService = SupabaseService;
   
   // State
@@ -208,13 +229,191 @@ export function DataProvider({ children }: DataProviderProps) {
     }).format(amount);
   };
 
+  // ✅ Función para cargar datos desde cache inmediatamente
+  const loadCachedData = async () => {
+    try {
+      console.log('Cargando datos desde cache...');
+      
+      const cachedProducts = localStorage.getItem('cached_products');
+      const cachedCustomers = localStorage.getItem('cached_customers');
+      const cachedSales = localStorage.getItem('cached_sales');
+
+      let hasCache = false;
+
+      if (cachedProducts) {
+        const products = JSON.parse(cachedProducts);
+        setProducts(products);
+        hasCache = true;
+        console.log(`Productos cargados desde cache: ${products.length}`);
+      }
+
+      if (cachedCustomers) {
+        const customers = JSON.parse(cachedCustomers);
+        setCustomers(customers);
+        hasCache = true;
+        console.log(`Clientes cargados desde cache: ${customers.length}`);
+      }
+
+      if (cachedSales) {
+        const sales = JSON.parse(cachedSales);
+        setSales(sales);
+        hasCache = true;
+        console.log(`Ventas cargadas desde cache: ${sales.length}`);
+      }
+
+      if (hasCache) {
+        setHasInitialData(true);
+        setCriticalDataLoaded(true);
+        setLoadingProgress(prev => ({ ...prev, critical: 100 }));
+        console.log('Datos críticos disponibles desde cache');
+      }
+
+    } catch (error) {
+      console.warn('Error cargando datos desde cache:', error);
+    }
+  };
+
+  // ✅ Función para guardar en cache
+  const saveToCache = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.warn(`Error guardando ${key} en cache:`, error);
+    }
+  };
+
+  // ✅ Función para cargar datos críticos
+  const loadCriticalData = async () => {
+    if (!user?.storeId) {
+      console.log('No hay storeId disponible para cargar datos críticos');
+      return;
+    }
+
+    try {
+      console.log('Cargando datos críticos...', { storeId: user.storeId });
+      setLoadingProgress(prev => ({ ...prev, critical: 10 }));
+
+      // Cargar productos
+      setLoadingProgress(prev => ({ ...prev, critical: 30 }));
+      const productsResult = await SupabaseService.getAllProducts(user.storeId);
+      if (productsResult) {
+        setProducts(productsResult);
+        saveToCache('cached_products', productsResult);
+        console.log(`Productos cargados: ${productsResult.length}`);
+      }
+
+      // Cargar clientes
+      setLoadingProgress(prev => ({ ...prev, critical: 60 }));
+      const customersResult = await SupabaseService.getAllCustomers(user.storeId);
+      if (customersResult) {
+        setCustomers(customersResult);
+        saveToCache('cached_customers', customersResult);
+        console.log(`Clientes cargados: ${customersResult.length}`);
+      }
+
+      setLoadingProgress(prev => ({ ...prev, critical: 100 }));
+      setCriticalDataLoaded(true);
+      setHasInitialData(true);
+      setIsConnected(true);
+      setConnectionError(null);
+
+      console.log('Datos críticos cargados exitosamente');
+
+      // ✅ Iniciar carga de datos secundarios en segundo plano
+      setTimeout(() => {
+        loadSecondaryData();
+      }, 500);
+
+    } catch (error) {
+      console.error('Error cargando datos críticos:', error);
+      setConnectionError('Error cargando datos críticos');
+      
+      // Si hay datos en cache, usarlos
+      if (products.length > 0 || customers.length > 0) {
+        setHasInitialData(true);
+        setCriticalDataLoaded(true);
+        console.log('Usando datos críticos desde cache debido a error de conexión');
+      }
+    }
+  };
+
+  // ✅ Función para cargar datos secundarios
+  const loadSecondaryData = async () => {
+    if (!user?.storeId) {
+      console.log('No hay storeId disponible para cargar datos secundarios');
+      return;
+    }
+
+    try {
+      console.log('Cargando datos secundarios en segundo plano...');
+      setLoadingProgress(prev => ({ ...prev, secondary: 10 }));
+
+      // Cargar ventas
+      setLoadingProgress(prev => ({ ...prev, secondary: 25 }));
+      try {
+        const salesResult = await SupabaseService.getAllSales(user.storeId);
+        if (salesResult) {
+          setSales(salesResult);
+          saveToCache('cached_sales', salesResult);
+          console.log(`Ventas cargadas: ${salesResult.length}`);
+        }
+      } catch (error) {
+        console.warn('Error cargando ventas:', error);
+      }
+
+      // Cargar gastos
+      setLoadingProgress(prev => ({ ...prev, secondary: 50 }));
+      try {
+        const expensesResult = await SupabaseService.getAllExpenses(user.storeId);
+        if (expensesResult) {
+          setExpenses(expensesResult);
+          console.log(`Gastos cargados: ${expensesResult.length}`);
+        }
+      } catch (error) {
+        console.warn('Error cargando gastos:', error);
+      }
+
+      // Cargar cajas registradoras
+      setLoadingProgress(prev => ({ ...prev, secondary: 75 }));
+      try {
+        const cashRegistersResult = await SupabaseService.getAllCashRegisters(user.storeId);
+        if (cashRegistersResult) {
+          setCashRegisters(cashRegistersResult);
+          console.log(`Cajas registradoras cargadas: ${cashRegistersResult.length}`);
+        }
+      } catch (error) {
+        console.warn('Error cargando cajas registradoras:', error);
+      }
+
+      // Cargar separados
+      setLoadingProgress(prev => ({ ...prev, secondary: 90 }));
+      try {
+        const layawaysResult = await SupabaseService.getAllLayaways(user.storeId);
+        if (layawaysResult) {
+          setLayaways(layawaysResult);
+          console.log(`Separados cargados: ${layawaysResult.length}`);
+        }
+      } catch (error) {
+        console.warn('Error cargando separados:', error);
+      }
+
+      setLoadingProgress(prev => ({ ...prev, secondary: 100 }));
+      setSecondaryDataLoaded(true);
+      console.log('Datos secundarios cargados exitosamente');
+
+    } catch (error) {
+      console.error('Error cargando datos secundarios:', error);
+      // No marcar como error crítico, los datos secundarios pueden fallar sin bloquear la app
+    }
+  };
+
   useEffect(() => {
     // Initialize offline service
     OfflineService.init().catch(console.error);
     
     if (!authLoading) {
       if (user) {
-        console.log('Usuario autenticado, conectando a base de datos...', { userId: user.id, storeId: user.storeId });
+        console.log('Usuario autenticado, iniciando carga de datos...', { userId: user.id, storeId: user.storeId });
         connectToDatabase();
       } else {
         console.log('Usuario no autenticado, limpiando datos...');
@@ -222,6 +421,9 @@ export function DataProvider({ children }: DataProviderProps) {
         setIsLoading(false);
         setIsConnected(false);
         setConnectionError(null);
+        setHasInitialData(false);
+        setCriticalDataLoaded(false);
+        setSecondaryDataLoaded(false);
       }
     }
   }, [user, authLoading]);
@@ -254,37 +456,31 @@ export function DataProvider({ children }: DataProviderProps) {
       
       console.log('Conectando a Supabase...', { storeId: user.storeId });
       
-      // Load data with offline fallback
-      const dataResult = await SyncService.loadDataWithFallback(user.storeId);
+      // ✅ Paso 1: Cargar datos desde cache inmediatamente
+      await loadCachedData();
       
-      // Update state with loaded data
-      setProducts(dataResult.products || []);
-      setCustomers(dataResult.customers || []);
-      setSales(dataResult.sales || []);
-      setExpenses(dataResult.expenses || []);
-      setCashMovements(dataResult.cashMovements || []);
-      
-      // Set connection status
-      setIsConnected(dataResult.source === 'online');
-      
-      if (dataResult.source === 'online') {
-        setConnectionError(null);
-        console.log(`Datos cargados desde ${dataResult.source}:`, {
-          products: dataResult.products?.length || 0,
-          customers: dataResult.customers?.length || 0,
-          sales: dataResult.sales?.length || 0,
-          expenses: dataResult.expenses?.length || 0
-        });
+      // ✅ Paso 2: Permitir acceso inmediato si hay cache, sino cargar datos críticos
+      if (!hasInitialData) {
+        console.log('No hay datos en cache, cargando datos críticos...');
+        await loadCriticalData();
       } else {
-        setConnectionError('Trabajando en modo offline');
-        console.log('Trabajando con datos offline');
+        console.log('Datos disponibles desde cache, actualizando en segundo plano...');
+        setIsConnected(true);
+        // Cargar datos críticos frescos en segundo plano
+        setTimeout(() => {
+          loadCriticalData();
+        }, 1000);
       }
       
     } catch (error) {
       console.error('Error conectando a base de datos:', error);
       setIsConnected(false);
       setConnectionError(error instanceof Error ? error.message : 'Error de conexión');
-      loadMockData();
+      
+      // Si no hay datos en absoluto, cargar mock data
+      if (!hasInitialData) {
+        loadMockData();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -296,6 +492,7 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const loadMockData = () => {
+    console.log('Cargando datos mock como fallback');
     setProducts(mockProducts);
     setSales([]);
     setCustomers(mockCustomers);
@@ -303,6 +500,8 @@ export function DataProvider({ children }: DataProviderProps) {
     setCashRegisters([]);
     setCashMovements([]);
     setLayaways([]);
+    setHasInitialData(true);
+    setCriticalDataLoaded(true);
   };
 
   const refreshData = async () => {
@@ -311,88 +510,11 @@ export function DataProvider({ children }: DataProviderProps) {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      console.log('Refrescando datos...', { storeId: user.storeId });
-
-      const currentStoreId = user.storeId;
-
-      // Load essential data first with error handling
-      const results = await Promise.allSettled([
-        SupabaseService.getAllProducts(currentStoreId),
-        SupabaseService.getAllCustomers(currentStoreId)
-      ]);
-
-      // Process results
-      const productsResult = results[0];
-      const customersResult = results[1];
-
-      if (productsResult.status === 'fulfilled') {
-        setProducts(productsResult.value);
-      } else {
-        console.error('Error cargando productos:', productsResult.reason);
-      }
-
-      if (customersResult.status === 'fulfilled') {
-        setCustomers(customersResult.value);
-      } else {
-        console.error('Error cargando clientes:', customersResult.reason);
-      }
-
-      console.log(`Datos esenciales cargados para tienda ${currentStoreId}`);
-
-      // Load secondary data in background with error handling
-      setTimeout(async () => {
-        try {
-          const secondaryResults = await Promise.allSettled([
-            SupabaseService.getAllSales(currentStoreId),
-            SupabaseService.getAllExpenses(currentStoreId),
-            SupabaseService.getAllCashRegisters(currentStoreId),
-            SupabaseService.getAllLayaways(currentStoreId)
-          ]);
-
-          // Process secondary results
-          const [salesResult, expensesResult, cashRegistersResult, layawaysResult] = secondaryResults;
-
-          if (salesResult.status === 'fulfilled') {
-            setSales(salesResult.value);
-          } else {
-            console.error('Error cargando ventas:', salesResult.reason);
-          }
-
-          if (expensesResult.status === 'fulfilled') {
-            setExpenses(expensesResult.value);
-          } else {
-            console.error('Error cargando gastos:', expensesResult.reason);
-          }
-
-          if (cashRegistersResult.status === 'fulfilled') {
-            setCashRegisters(cashRegistersResult.value);
-          } else {
-            console.error('Error cargando cajas:', cashRegistersResult.reason);
-          }
-
-          if (layawaysResult.status === 'fulfilled') {
-            setLayaways(layawaysResult.value);
-          } else {
-            console.error('Error cargando separados:', layawaysResult.reason);
-          }
-
-          console.log('Datos adicionales cargados');
-        } catch (error) {
-          console.error('Error cargando datos adicionales:', error);
-        }
-      }, 100);
-
-    } catch (error) {
-      console.error('Error refrescando datos:', error);
-      setConnectionError(error instanceof Error ? error.message : 'Error refrescando datos');
-    } finally {
-      setIsLoading(false);
-    }
+    console.log('Refrescando todos los datos...');
+    await loadCriticalData();
   };
 
-  // CRUD functions with better error handling
+  // ✅ El resto de las funciones CRUD se mantienen igual pero con mejor manejo de cache
   const addProduct = async (product: Product) => {
     const normalized: Product = {
       ...product,
@@ -402,12 +524,20 @@ export function DataProvider({ children }: DataProviderProps) {
 
     try {
       // Optimistic update
-      setProducts(prev => [...prev, normalized]);
+      setProducts(prev => {
+        const updated = [...prev, normalized];
+        saveToCache('cached_products', updated);
+        return updated;
+      });
 
       if (isConnected) {
         try {
           const savedProduct = await SupabaseService.saveProduct(normalized);
-          setProducts(prev => prev.map(p => p.id === normalized.id ? savedProduct : p));
+          setProducts(prev => {
+            const updated = prev.map(p => p.id === normalized.id ? savedProduct : p);
+            saveToCache('cached_products', updated);
+            return updated;
+          });
           console.log('Producto guardado en Supabase:', normalized.name);
         } catch (error) {
           console.warn('Error guardando en Supabase, manteniendo local:', error);
@@ -417,7 +547,11 @@ export function DataProvider({ children }: DataProviderProps) {
       }
       
     } catch (error) {
-      setProducts(prev => prev.filter(p => p.id !== normalized.id));
+      setProducts(prev => {
+        const updated = prev.filter(p => p.id !== normalized.id);
+        saveToCache('cached_products', updated);
+        return updated;
+      });
       console.error('Error guardando producto:', error);
       throw error;
     }
@@ -432,17 +566,29 @@ export function DataProvider({ children }: DataProviderProps) {
 
     try {
       const originalProduct = products.find(p => p.id === normalized.id);
-      setProducts(prev => prev.map(p => p.id === normalized.id ? normalized : p));
+      setProducts(prev => {
+        const updated = prev.map(p => p.id === normalized.id ? normalized : p);
+        saveToCache('cached_products', updated);
+        return updated;
+      });
 
       if (isConnected) {
         const savedProduct = await SupabaseService.saveProduct(normalized);
-        setProducts(prev => prev.map(p => p.id === savedProduct.id ? savedProduct : p));
+        setProducts(prev => {
+          const updated = prev.map(p => p.id === savedProduct.id ? savedProduct : p);
+          saveToCache('cached_products', updated);
+          return updated;
+        });
         console.log('Producto actualizado en Supabase:', normalized.name);
       }
     } catch (error) {
       const originalProduct = products.find(p => p.id === normalized.id);
       if (originalProduct) {
-        setProducts(prev => prev.map(p => p.id === normalized.id ? originalProduct : p));
+        setProducts(prev => {
+          const updated = prev.map(p => p.id === normalized.id ? originalProduct : p);
+          saveToCache('cached_products', updated);
+          return updated;
+        });
       }
       console.error('Error actualizando producto:', error);
       throw error;
@@ -459,15 +605,23 @@ export function DataProvider({ children }: DataProviderProps) {
     };
     
     try {
-      setSales(prev => [...prev, normalized]);
+      setSales(prev => {
+        const updated = [...prev, normalized];
+        saveToCache('cached_sales', updated);
+        return updated;
+      });
 
-      setProducts(prev => prev.map(p => {
-        const saleItem = normalized.items.find(item => item.productId === p.id);
-        if (saleItem) {
-          return { ...p, stock: p.stock - saleItem.quantity };
-        }
-        return p;
-      }));
+      setProducts(prev => {
+        const updated = prev.map(p => {
+          const saleItem = normalized.items.find(item => item.productId === p.id);
+          if (saleItem) {
+            return { ...p, stock: p.stock - saleItem.quantity };
+          }
+          return p;
+        });
+        saveToCache('cached_products', updated);
+        return updated;
+      });
 
       const cashMovement: CashMovement = {
         id: crypto.randomUUID(),
@@ -494,7 +648,11 @@ export function DataProvider({ children }: DataProviderProps) {
         console.log('Venta guardada offline:', normalized.invoiceNumber);
       }
     } catch (error) {
-      setSales(prev => prev.filter(s => s.id !== normalized.id));
+      setSales(prev => {
+        const updated = prev.filter(s => s.id !== normalized.id);
+        saveToCache('cached_sales', updated);
+        return updated;
+      });
       setCashMovements(prev => prev.filter(m => m.referenceId !== normalized.id));
       console.error('Error guardando venta:', error);
       throw error;
@@ -512,7 +670,11 @@ export function DataProvider({ children }: DataProviderProps) {
 
     try {
       const originalSale = sales.find(s => s.id === normalized.id);
-      setSales(prev => prev.map(s => s.id === normalized.id ? normalized : s));
+      setSales(prev => {
+        const updated = prev.map(s => s.id === normalized.id ? normalized : s);
+        saveToCache('cached_sales', updated);
+        return updated;
+      });
 
       if (isConnected) {
         await SupabaseService.updateSale(normalized);
@@ -521,7 +683,11 @@ export function DataProvider({ children }: DataProviderProps) {
     } catch (error) {
       const originalSale = sales.find(s => s.id === normalized.id);
       if (originalSale) {
-        setSales(prev => prev.map(s => s.id === normalized.id ? originalSale : s));
+        setSales(prev => {
+          const updated = prev.map(s => s.id === normalized.id ? originalSale : s);
+          saveToCache('cached_sales', updated);
+          return updated;
+        });
       }
       console.error('Error actualizando venta:', error);
       throw error;
@@ -535,7 +701,11 @@ export function DataProvider({ children }: DataProviderProps) {
         throw new Error('Venta no encontrada');
       }
 
-      setSales(prev => prev.filter(s => s.id !== id));
+      setSales(prev => {
+        const updated = prev.filter(s => s.id !== id);
+        saveToCache('cached_sales', updated);
+        return updated;
+      });
 
       if (isConnected) {
         await SupabaseService.deleteSale(id);
@@ -546,7 +716,11 @@ export function DataProvider({ children }: DataProviderProps) {
     } catch (error) {
       const originalSale = sales.find(s => s.id === id);
       if (originalSale) {
-        setSales(prev => [...prev, originalSale]);
+        setSales(prev => {
+          const updated = [...prev, originalSale];
+          saveToCache('cached_sales', updated);
+          return updated;
+        });
       }
       console.error('Error eliminando venta:', error);
       throw error;
@@ -560,12 +734,20 @@ export function DataProvider({ children }: DataProviderProps) {
     };
     
     try {
-      setCustomers(prev => [...prev, normalizedCustomer]);
+      setCustomers(prev => {
+        const updated = [...prev, normalizedCustomer];
+        saveToCache('cached_customers', updated);
+        return updated;
+      });
       
       if (isConnected) {
         try {
           const savedCustomer = await SupabaseService.saveCustomer(normalizedCustomer);
-          setCustomers(prev => prev.map(c => c.id === savedCustomer.id ? savedCustomer : c));
+          setCustomers(prev => {
+            const updated = prev.map(c => c.id === savedCustomer.id ? savedCustomer : c);
+            saveToCache('cached_customers', updated);
+            return updated;
+          });
           console.log('Cliente guardado en Supabase:', customer.name);
         } catch (error) {
           console.warn('Error guardando en Supabase, manteniendo local:', error);
@@ -575,7 +757,11 @@ export function DataProvider({ children }: DataProviderProps) {
       }
       
     } catch (error) {
-      setCustomers(prev => prev.filter(c => c.id !== normalizedCustomer.id));
+      setCustomers(prev => {
+        const updated = prev.filter(c => c.id !== normalizedCustomer.id);
+        saveToCache('cached_customers', updated);
+        return updated;
+      });
       console.error('Error guardando cliente:', error);
       throw error;
     }
@@ -585,10 +771,18 @@ export function DataProvider({ children }: DataProviderProps) {
     try {
       if (isConnected) {
         const savedCustomer = await SupabaseService.saveCustomer(updatedCustomer);
-        setCustomers(prev => prev.map(c => c.id === savedCustomer.id ? savedCustomer : c));
+        setCustomers(prev => {
+          const updated = prev.map(c => c.id === savedCustomer.id ? savedCustomer : c);
+          saveToCache('cached_customers', updated);
+          return updated;
+        });
         console.log('Cliente actualizado en Supabase:', updatedCustomer.name);
       } else {
-        setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+        setCustomers(prev => {
+          const updated = prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c);
+          saveToCache('cached_customers', updated);
+          return updated;
+        });
         console.log('Cliente actualizado offline:', updatedCustomer.name);
       }
     } catch (error) {
@@ -652,11 +846,15 @@ export function DataProvider({ children }: DataProviderProps) {
   const addPurchase = async (purchase: Purchase) => {
     setPurchases(prev => [...prev, purchase]);
     purchase.items.forEach(item => {
-      setProducts(prev => prev.map(p => 
-        p.id === item.productId 
-          ? { ...p, stock: p.stock + item.quantity }
-          : p
-      ));
+      setProducts(prev => {
+        const updated = prev.map(p => 
+          p.id === item.productId 
+            ? { ...p, stock: p.stock + item.quantity }
+            : p
+        );
+        saveToCache('cached_products', updated);
+        return updated;
+      });
     });
   };
 
@@ -790,11 +988,15 @@ export function DataProvider({ children }: DataProviderProps) {
       }
       
       normalizedLayaway.items.forEach(item => {
-        setProducts(prev => prev.map(p => 
-          p.id === item.productId 
-            ? { ...p, stock: p.stock - item.quantity }
-            : p
-        ));
+        setProducts(prev => {
+          const updated = prev.map(p => 
+            p.id === item.productId 
+              ? { ...p, stock: p.stock - item.quantity }
+              : p
+          );
+          saveToCache('cached_products', updated);
+          return updated;
+        });
       });
       
       console.log('Separado guardado');
@@ -899,7 +1101,8 @@ export function DataProvider({ children }: DataProviderProps) {
     return receiptTemplates.find(rt => rt.storeId === storeId && rt.isActive) || null;
   };
 
-  const isLoadingCombined = authLoading || isLoading;
+  // ✅ Solo marcar como loading cuando realmente esté bloqueando la UI
+  const isLoadingCombined = authLoading || (isLoading && !hasInitialData);
 
   const value = {
     products,
@@ -919,6 +1122,11 @@ export function DataProvider({ children }: DataProviderProps) {
     isLoading: isLoadingCombined,
     isConnected,
     connectionError,
+    // ✅ Nuevas propiedades
+    hasInitialData,
+    loadingProgress,
+    criticalDataLoaded,
+    secondaryDataLoaded,
     dbService,
     addProduct,
     updateProduct,
@@ -953,7 +1161,10 @@ export function DataProvider({ children }: DataProviderProps) {
     formatCurrency,
     refreshData,
     connectToDatabase,
-    retryConnection
+    retryConnection,
+    // ✅ Nuevas funciones
+    loadCriticalData,
+    loadSecondaryData
   };
 
   return (
