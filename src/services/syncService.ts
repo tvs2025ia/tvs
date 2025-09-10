@@ -19,11 +19,11 @@ export class SyncService {
       this.syncPendingData();
     }
 
-    console.log('📄 SyncService inicializado');
+    // 🔇 Eliminado: console.log('📄 SyncService inicializado');
   }
 
   private static handleOnline(): void {
-    console.log('🌐 Conexión restaurada - iniciando sincronización');
+    // 🔇 Eliminado: console.log('🌐 Conexión restaurada - iniciando sincronización');
     this.isOnline = true;
     this.connectionRetries = 0; // Reset retry counter
     this.notifyCallbacks({ type: 'online', message: 'Conexión restaurada' });
@@ -31,7 +31,7 @@ export class SyncService {
   }
 
   private static handleOffline(): void {
-    console.log('🔴 Conexión perdida - modo offline activado');
+    // 🔇 Eliminado: console.log('🔴 Conexión perdida - modo offline activado');
     this.isOnline = false;
     this.notifyCallbacks({ type: 'offline', message: 'Trabajando sin conexión' });
   }
@@ -71,7 +71,7 @@ export class SyncService {
       }
 
       const syncQueue = await OfflineService.getSyncQueue();
-      console.log(`📄 Sincronizando ${syncQueue.length} elementos pendientes`);
+      // 🔇 Eliminado: console.log(`📄 Sincronizando ${syncQueue.length} elementos pendientes`);
 
       // Process sync queue in order
       for (const item of syncQueue) {
@@ -81,7 +81,8 @@ export class SyncService {
           result.success++;
           result.details.push(`✅ ${item.type}: ${this.getItemDescription(item)}`);
         } catch (error) {
-          console.error(`❌ Error sincronizando ${item.type}:`, error);
+          // 🔇 Cambiado: console.error por console.warn para ser menos visible
+          console.warn(`Error sincronizando ${item.type}:`, error);
           
           // Increment retry count
           await OfflineService.incrementSyncRetries(item.id);
@@ -112,7 +113,8 @@ export class SyncService {
       }
 
     } catch (error) {
-      console.error('❌ Error durante sincronización:', error);
+      // 🔇 Cambiado: console.error por console.warn para ser menos visible
+      console.warn('Error durante sincronización:', error);
       this.notifyCallbacks({ 
         type: 'error', 
         message: 'Error de sincronización' 
@@ -135,7 +137,8 @@ export class SyncService {
           return true;
         }
       } catch (error) {
-        console.warn(`Intento de conexión ${i + 1}/${this.maxRetries} falló:`, error);
+        // 🔇 Cambiado: console.warn por console.log para ser menos visible
+        console.log(`Intento de conexión ${i + 1}/${this.maxRetries} falló:`, error);
       }
       
       // Wait before retry (exponential backoff)
@@ -210,7 +213,7 @@ export class SyncService {
     try {
       if (this.isOnline) {
         // Try to load from Supabase first
-        console.log('🔄 Intentando cargar datos desde Supabase...');
+        // 🔇 Eliminado: console.log('🔄 Intentando cargar datos desde Supabase...');
         
         const [products, customers, sales, expenses] = await Promise.allSettled([
           SupabaseService.getAllProducts(storeId),
@@ -241,7 +244,7 @@ export class SyncService {
           console.warn('Error guardando datos en cache offline:', cacheError);
         }
 
-        console.log('📡 Datos cargados desde Supabase (parcial o completo)');
+        // 🔇 Eliminado: console.log('📡 Datos cargados desde Supabase (parcial o completo)');
         
         return {
           products: productsData,
@@ -253,7 +256,7 @@ export class SyncService {
         };
       }
     } catch (error) {
-      console.warn('⚠️ Error cargando desde Supabase, usando datos offline:', error);
+      console.warn('Error cargando desde Supabase, usando datos offline:', error);
     }
 
     // Fallback to offline data
@@ -266,7 +269,7 @@ export class SyncService {
         OfflineService.getCashMovementsOffline(storeId)
       ]);
 
-      console.log('💾 Datos cargados desde IndexedDB');
+      // 🔇 Eliminado: console.log('💾 Datos cargados desde IndexedDB');
 
       return {
         products: products.status === 'fulfilled' ? products.value : [],
@@ -277,7 +280,7 @@ export class SyncService {
         source: 'offline'
       };
     } catch (offlineError) {
-      console.error('❌ Error cargando datos offline:', offlineError);
+      console.error('Error cargando datos offline:', offlineError);
       
       // Return empty data as last resort
       return {
