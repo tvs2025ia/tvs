@@ -5,6 +5,7 @@ interface StoreContextType {
   stores: Store[];
   currentStore: Store | null;
   setCurrentStore: (store: Store) => void;
+  addStore: (store: Store) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -50,7 +51,7 @@ interface StoreProviderProps {
 }
 
 export function StoreProvider({ children }: StoreProviderProps) {
-  const [stores] = useState<Store[]>(mockStores);
+  const [stores, setStores] = useState<Store[]>(mockStores);
   const [currentStore, setCurrentStoreState] = useState<Store | null>(null);
 
   useEffect(() => {
@@ -66,10 +67,16 @@ export function StoreProvider({ children }: StoreProviderProps) {
     // In production, this could be stored in user preferences in Supabase
   };
 
+  const addStore = (store: Store) => {
+    setStores(prevStores => [...prevStores, store]);
+    // In production, this would also save to Supabase
+  };
+
   const value = {
     stores,
     currentStore,
-    setCurrentStore
+    setCurrentStore,
+    addStore
   };
 
   return (

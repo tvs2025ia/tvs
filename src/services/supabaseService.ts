@@ -494,10 +494,6 @@ export class SupabaseService {
   // Check Supabase connection with better error handling
   static async testConnection(): Promise<boolean> {
     try {
-      // Test with a simple query that should work on any Supabase instance
-      const { data, error } = await supabase.rpc('now'); // This is a built-in function
-      if (!error) return true;
-      
       // Fallback tests
       const { error: productsError } = await supabase.from('products').select('id').limit(1);
       if (!productsError) return true;
