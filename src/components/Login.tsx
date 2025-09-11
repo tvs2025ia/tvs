@@ -11,7 +11,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const { stores } = useStore();
+  const { stores, isLoading: storesLoading } = useStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,18 +69,30 @@ export function Login() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tienda
             </label>
-            <select
-              value={selectedStoreId}
-              onChange={(e) => setSelectedStoreId(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={loading}
-              required
-            >
-              <option value="">Selecciona una tienda</option>
-              {stores.filter(store => store.isActive).map(store => (
-                <option key={store.id} value={store.id}>{store.name}</option>
-              ))}
-            </select>
+            {storesLoading ? (
+              <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span className="text-gray-500">Cargando tiendas...</span>
+              </div>
+            ) : (
+              <select
+                value={selectedStoreId}
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+                required
+              >
+                <option value="">Selecciona una tienda</option>
+                {stores.filter(store => store.isActive).map(store => (
+                  <option key={store.id} value={store.id}>{store.name}</option>
+                ))}
+              </select>
+            )}
+            {!storesLoading && stores.length === 0 && (
+              <p className="text-sm text-red-600 mt-1">
+                No hay tiendas disponibles. Contacta al administrador.
+              </p>
+            )}
           </div>
 
           <div>

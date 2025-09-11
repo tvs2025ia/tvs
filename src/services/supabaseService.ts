@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { 
   Product, Sale, Customer, Expense, Quote, Purchase, 
   User, Supplier, CashRegister, CashMovement, 
-  ReceiptTemplate, Layaway, PaymentMethod 
+  ReceiptTemplate, Layaway, PaymentMethod, Store
 } from '../types';
 
 export class SupabaseService {
@@ -491,6 +491,52 @@ export class SupabaseService {
     return data.publicUrl;
   }
 
+  // Stores
+  static async getAllStores(): Promise<Store[]> {
+    try {
+      const storesExists = await this.tableExists('stores');
+      if (!storesExists) {
+        console.warn('Stores table does not exist');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching stores:', error);
+        return [];
+      }
+      
+      return (data || []).map(this.mapSupabaseToStore);
+    } catch (error) {
+      console.error('Error in getAllStores:', error);
+      return [];
+    }
+  }
+
+  static async saveStore(store: Store): Promise<Store> {
+    const supabaseStore = this.mapStoreToSupabase(store);
+    const { data, error } = await supabase
+      .from('stores')
+      .upsert(supabaseStore)
+      .select()
+      .single();
+    if (error) throw new Error(`Error saving store: ${error.message}`);
+    return this.mapSupabaseToStore(data);
+  }
+
+  static async deleteStore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('stores')
+      .update({ is_active: false })
+      .eq('id', id);
+    if (error) throw new Error(`Error deactivating store: ${error.message}`);
+  }
+
   // Check Supabase connection with better error handling
   static async testConnection(): Promise<boolean> {
     try {
@@ -689,6 +735,28 @@ export class SupabaseService {
       })) || [],
       dueDate: data.due_date ? new Date(data.due_date) : undefined,
       notes: data.notes
+    };
+  }
+
+  private static mapSupabaseToStore(data: any): Store {
+    return {
+      id: data.id,
+      name: data.name,
+      address: data.address,
+      phone: data.phone,
+      email: data.email,
+      isActive: data.is_active
+    };
+  }
+
+  private static mapStoreToSupabase(store: Store): any {
+    return {
+      id: store.id,
+      name: store.name,
+      address: store.address,
+      phone: store.phone,
+      email: store.email,
+      is_active: store.isActive
     };
   }
 }
