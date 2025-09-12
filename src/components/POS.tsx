@@ -13,7 +13,6 @@ import {
   Truck,
   X,
   Package,
-  // icons adicionales
 } from 'lucide-react';
 
 export function POS() {
@@ -47,7 +46,6 @@ export function POS() {
 
   // Pago/recibo/impresión
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  // Guardamos el campo como texto para mejorar la experiencia al tipear
   const [textAmountReceived, setTextAmountReceived] = useState<string>('');
   const amountReceived = useMemo(() => {
     const parsed = parseFloat(textAmountReceived as any);
@@ -63,12 +61,10 @@ export function POS() {
   // Mobile cart drawer
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
-  // Cálculos memorizados para evitar re-renderes pesados
+  // Cálculos memorizados
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.total || 0), 0), [cart]);
   const totalWithDiscount = useMemo(() => subtotal - discount, [subtotal, discount]);
   const finalTotal = useMemo(() => totalWithDiscount + shippingCost, [totalWithDiscount, shippingCost]);
-  const paymentDeduction = useMemo(() => finalTotal * ((selectedPaymentMethod?.discountPercentage || 0) / 100), [finalTotal, selectedPaymentMethod]);
-  const netTotal = useMemo(() => finalTotal - paymentDeduction, [finalTotal, paymentDeduction]);
   const invoiceNumber = useMemo(() => `INV-${Date.now()}`, [] as any);
 
   const formatCurrency = (amount: number) => {
@@ -118,7 +114,7 @@ export function POS() {
     setCart(prev => prev.filter(item => item.productId !== productId));
   };
 
-  // Editar precio unitario en el carrito (funcionalidad solicitada)
+  // Editar precio unitario en el carrito
   const updateUnitPrice = (productId: string, newUnitPrice: number) => {
     if (!Number.isFinite(newUnitPrice) || newUnitPrice < 0) return;
     setCart(prev => prev.map(item => item.productId === productId ? { ...item, unitPrice: newUnitPrice, total: newUnitPrice * item.quantity } : item));
@@ -133,11 +129,10 @@ export function POS() {
     setLastSaleData(null);
   };
 
-  // Proceso de guardar venta (no bloqueante)
+  // Proceso de guardar venta
   const processSale = async (sale: Sale) => {
     setProcessingPayment(true);
     try {
-      // Si addSale es sincrónico costoso, lo hacemos en un microtask/async para liberar render
       await new Promise(resolve => setTimeout(resolve, 50));
       await addSale(sale);
       clearCart();
@@ -153,7 +148,6 @@ export function POS() {
     }
   };
 
-  // Preparar confirmación de pago (solo abre recibo)
   const handleConfirmPayment = () => {
     if (!textAmountReceived || amountReceived < finalTotal) {
       alert('El monto recibido debe ser igual o mayor al total.');
@@ -172,7 +166,7 @@ export function POS() {
       discount,
       shippingCost,
       total: finalTotal,
-      netTotal,
+      netTotal: finalTotal,
       paymentMethod: selectedPaymentMethod?.name || 'Efectivo',
       paymentMethodDiscount: selectedPaymentMethod?.discountPercentage || 0,
       date: new Date(),
@@ -183,11 +177,8 @@ export function POS() {
     setShowReceiptModal(true);
   };
 
-  // Crear una nueva ventana con el HTML del recibo, imprimir y luego procesar la venta.
-  // Esto evita el bloqueo del hilo principal por window.print() en el mismo contexto.
   const printReceiptAndProcess = async (sale: Sale, amountPaid: number) => {
     try {
-      // Construir HTML mínimo para impresión usando la plantilla activa (header/footer) si aplica.
       const header = activeReceiptTemplate?.headerText ? `<div style="text-align:center;font-weight:bold;white-space:pre-line;">${activeReceiptTemplate.headerText}</div>` : '';
       const footer = activeReceiptTemplate?.footerText ? `<div style="text-align:center;font-size:11px;white-space:pre-line;">${activeReceiptTemplate.footerText}</div>` : '';
 
@@ -200,7 +191,6 @@ export function POS() {
         <div style="display:flex;justify-content:space-between">Pagó: <span>${formatCurrency(amountPaid)}</span></div>
         <div style="display:flex;justify-content:space-between">Cambio: <span>${formatCurrency(amountPaid - sale.total)}</span></div>
       `;
-      // NOTA: OMITIMOS aquí el Desc. Tarjeta Crédito y Total Neto según petición.
 
       const printHtml = `
         <html>
@@ -234,12 +224,9 @@ export function POS() {
         </html>
       `;
 
-      // Abrir ventana, escribir y dejar que el script imprima
       const w = window.open('', '_blank', 'width=400,height=600');
       if (!w) {
-        // Si el popup es bloqueado, fallback: imprimir en el mismo contexto (sigue sin bloquear la UI principal porque lo hacemos después)
         window.print();
-        // Procesamos la venta después
         await processSale(sale);
         return;
       }
@@ -247,27 +234,20 @@ export function POS() {
       w.document.write(printHtml);
       w.document.close();
 
-      // Esperar un momento para que la ventana inicie el print script y luego procesar venta sin bloquear UI.
-      // Damos un tiempo razonable para que el print dialog se muestre.
       setTimeout(() => {
-        // No await aquí para no bloquear la UI; processSale ya maneja su propio async.
         processSale(sale);
       }, 1200);
     } catch (err) {
       console.error('Error printing receipt', err);
-      // Si falla la impresión, aun así procesamos la venta para no perder la transacción
       await processSale(sale);
     }
   };
 
-  // Acción que se llama desde el modal de recibo
   const handlePrintReceipt = () => {
     if (!lastSaleData) return;
-    // Llamamos a la función que abre ventana y procesa sin bloquear
     printReceiptAndProcess(lastSaleData, amountReceived);
   };
 
-  // Efecto: agrega estilos de impresión global sólo si plantilla cambia (optimizado)
   useEffect(() => {
     const template = activeReceiptTemplate;
     if (!template) return;
@@ -294,32 +274,10 @@ export function POS() {
     return () => { document.head.removeChild(style); };
   }, [activeReceiptTemplate]);
 
-  // Componentes internos (Product card)
-  const ProductCard = ({ product }: { product: Product }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow">
-      <LocalImage src={product.imageUrl} alt={product.name} className="w-full h-28 object-cover rounded-lg mb-2" />
-      <div className="space-y-1">
-        <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
-        <p className="text-xs text-gray-500">{product.category}</p>
-        <div className="flex justify-between items-center mt-1">
-          <span className="text-sm font-bold text-green-600">{formatCurrency(product.price)}</span>
-          <span className="text-xs text-gray-500">{product.stock} u</span>
-        </div>
-        <button
-          onClick={() => addToCart(product)}
-          disabled={product.stock === 0}
-          className="w-full mt-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm"
-        >
-          {product.stock === 0 ? 'Sin Stock' : 'Agregar'}
-        </button>
-      </div>
-    </div>
-  );
-
-  // Renderizado
+  // ---------- RENDER COMPLETO ----------
   return (
     <div className="h-screen flex bg-gray-50 overflow-hidden">
-      {/* Products Section */}
+      {/* Productos */}
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="mb-4 md:mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Punto de Venta</h1>
@@ -337,7 +295,24 @@ export function POS() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <div key={product.id} className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow">
+              <LocalImage src={product.imageUrl} alt={product.name} className="w-full h-28 object-cover rounded-lg mb-2" />
+              <div className="space-y-1">
+                <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                <p className="text-xs text-gray-500">{product.category}</p>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-sm font-bold text-green-600">{formatCurrency(product.price)}</span>
+                  <span className="text-xs text-gray-500">{product.stock} u</span>
+                </div>
+                <button
+                  onClick={() => addToCart(product)}
+                  disabled={product.stock === 0}
+                  className="w-full mt-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {product.stock === 0 ? 'Sin Stock' : 'Agregar'}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -349,7 +324,7 @@ export function POS() {
         )}
       </div>
 
-      {/* Desktop Cart Section (oculto en móvil) */}
+      {/* Carrito escritorio */}
       <div className="hidden md:flex w-96 bg-white border-l border-gray-200 flex-col">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -390,7 +365,6 @@ export function POS() {
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
-
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
                         <div className="text-xs text-gray-500 mt-1">
@@ -412,7 +386,6 @@ export function POS() {
           )}
         </div>
 
-        {/* Cart Summary (compacto) */}
         {cart.length > 0 && (
           <div className="border-t border-gray-200 p-4 space-y-3">
             <div className="grid grid-cols-2 gap-2 items-center text-sm">
@@ -450,17 +423,16 @@ export function POS() {
         )}
       </div>
 
-      {/* Floating cart button para móvil */}
+      {/* Botón flotante móvil */}
       <button
         className="md:hidden fixed bottom-5 right-4 z-40 bg-blue-600 text-white p-3 rounded-full shadow-lg flex items-center space-x-2"
         onClick={() => setMobileCartOpen(true)}
-        aria-label="Abrir carrito"
       >
         <ShoppingCart className="w-5 h-5" />
         <span className="text-sm font-medium">{cart.length}</span>
       </button>
 
-      {/* Mobile Cart Drawer */}
+      {/* Drawer móvil */}
       {mobileCartOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black bg-opacity-40" onClick={() => setMobileCartOpen(false)}></div>
@@ -487,7 +459,6 @@ export function POS() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <button onClick={() => updateQuantity(item.productId, item.quantity - 1)} className="w-7 h-7 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50">
@@ -498,12 +469,17 @@ export function POS() {
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
-
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">{formatCurrency(item.total)}</p>
                           <div className="text-xs text-gray-500 mt-1">
                             <label className="block">P. unit.</label>
-                            <input type="number" className="w-24 px-2 py-1 border border-gray-300 rounded text-sm" value={item.unitPrice} onChange={(e) => updateUnitPrice(item.productId, Number(e.target.value || 0))} min={0} />
+                            <input
+                              type="number"
+                              className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                              value={item.unitPrice}
+                              onChange={(e) => updateUnitPrice(item.productId, Number(e.target.value || 0))}
+                              min={0}
+                            />
                           </div>
                         </div>
                       </div>
@@ -513,7 +489,6 @@ export function POS() {
               </div>
             )}
 
-            {/* Mobile summary */}
             {cart.length > 0 && (
               <div className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2 items-center text-sm">
@@ -547,7 +522,7 @@ export function POS() {
         </div>
       )}
 
-      {/* Payment Modal */}
+      {/* Modal de pago */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
@@ -563,7 +538,7 @@ export function POS() {
                   const method = paymentMethods.find(m => m.id === e.target.value);
                   if (method) setSelectedPaymentMethod(method);
                 }} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  {paymentMethods.filter(m => m.isActive).map(method => <option key={method.id} value={method.id}>{method.name} {method.discountPercentage > 0 && `(-${method.discountPercentage}%)`}</option>)}
+                  {paymentMethods.filter(m => m.isActive).map(method => <option key={method.id} value={method.id}>{method.name}</option>)}
                 </select>
               </div>
 
@@ -580,16 +555,6 @@ export function POS() {
 
               <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between text-sm"><span>Total a cobrar al cliente:</span><span className="font-semibold">{formatCurrency(finalTotal)}</span></div>
-
-                {/* Si aplica descuento por método lo mostramos en modal, pero NO lo imprimimos */}
-                {selectedPaymentMethod?.discountPercentage > 0 && (
-                  <>
-                    <div className="flex justify-between text-sm text-orange-600"><span>Deducción {selectedPaymentMethod.name}:</span><span>-{formatCurrency(paymentDeduction)}</span></div>
-                    {/* No se muestra "Total Neto" en la impresión, pero sí en el modal para control */}
-                    <div className="flex justify-between text-sm font-medium text-green-600 pt-2 border-t border-gray-200"><span>Total neto para la tienda:</span><span>{formatCurrency(netTotal)}</span></div>
-                  </>
-                )}
-
                 {(textAmountReceived !== '' && amountReceived >= finalTotal) && (
                   <div className="flex justify-between text-sm text-green-700 pt-2 border-t border-gray-200"><span>Cambio a devolver:</span><span>{formatCurrency(amountReceived - finalTotal)}</span></div>
                 )}
@@ -606,7 +571,7 @@ export function POS() {
         </div>
       )}
 
-      {/* Receipt & Print Modal (vista previa en pantalla) */}
+      {/* Modal de recibo */}
       {showReceiptModal && lastSaleData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-[320px] p-4 text-sm font-mono" id="receipt">
@@ -636,11 +601,6 @@ export function POS() {
                 <div className="flex justify-between font-bold"><span>Total:</span><span>{formatCurrency(lastSaleData.total)}</span></div>
                 <div className="flex justify-between"><span>Pagó:</span><span>{formatCurrency(amountReceived)}</span></div>
                 <div className="flex justify-between"><span>Cambio:</span><span>{formatCurrency(amountReceived - lastSaleData.total)}</span></div>
-
-                {/* --------
-                   IMPORTANTE: aquí OMITIMOS la línea "Desc. Tarjeta Crédito" y "Total Neto" según tu petición.
-                   Si quieres eliminarlos definitivamente de la plantilla global, lo hacemos en la página de plantillas.
-                -------- */}
               </>
             )}
 
