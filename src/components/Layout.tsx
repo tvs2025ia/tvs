@@ -266,8 +266,8 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
             </button>
 
             <div className="flex-1 flex justify-end items-center space-x-4">
-              {/* ✅ Selector de tienda solo para admin */}
-              {user?.role === 'admin' && stores.length > 0 && (
+              {/* ✅ Selector de tienda disponible para todos */}
+              {stores.length > 0 && (
                 <select
                   value={currentStore?.id || ''}
                   onChange={(e) => handleStoreChange(e.target.value)}
