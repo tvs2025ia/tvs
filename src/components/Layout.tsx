@@ -17,7 +17,6 @@ import {
   FileText,
   Calculator,
   ShoppingBag,
-  UserPlus,
   BarChart3,
   Home,
   Bookmark,
@@ -34,26 +33,6 @@ interface LayoutProps {
   onPageChange: (page: string) => void;
 }
 
-// ✅ Hook de sincronización simplificado
-function useDataSync() {
-  const { user } = useAuth();
-  const { refreshData, isConnected } = useData();
-  const [lastUserId, setLastUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const currentUserId = user?.id || null;
-
-    if (user && isConnected && lastUserId !== currentUserId) {
-      console.log('🔄 Layout: Detectado cambio de usuario, refrescando datos...');
-      refreshData();
-    }
-
-    setLastUserId(currentUserId);
-  }, [user, isConnected, refreshData, lastUserId]);
-
-  return { isConnected };
-}
-
 export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -61,11 +40,8 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const { user, logout } = useAuth();
   const { stores, currentStore, setCurrentStore } = useStore();
   const { isConnected } = useData();
-  const { forceSyncNow, pendingSyncCount, syncStatus } = useOfflineSync();
+  const { forceSyncNow, pendingSyncCount } = useOfflineSync();
   const [syncing, setSyncing] = useState(false);
-
-  // ✅ Usar hook de sincronización simplificado
-  const syncStatusData = useDataSync();
 
   // Detectar el tamaño de pantalla
   useEffect(() => {
@@ -141,7 +117,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const handleStoreChange = (storeId: string) => {
     const store = stores.find(s => s.id === storeId);
     if (store) {
-      console.log('🏪 Layout: Cambiando tienda a', store.name);
       setCurrentStore(store);
     }
   };
@@ -151,7 +126,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   };
 
   // ✅ Estado de conexión con botón de sync
-  const ConnectionStatus = ({ className = "" }) => {
+  const ConnectionStatus = () => {
     const statusIcon = isConnected ? (
       <Cloud className="w-4 h-4 text-green-500" />
     ) : (
@@ -171,7 +146,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     };
 
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
+      <div className="flex items-center space-x-2">
         {statusIcon}
         <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
         
@@ -210,16 +185,100 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
         </div>
       )}
 
-      {/* ... resto del código del sidebar y main content sin cambios ... */}
+      {/* Sidebar */}
+      <div className="flex">
+        {/* Overlay móvil */}
+        {sidebarOpen && isMobile && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-      <div className={`transition-all duration-300 ease-in-out ${
-        sidebarCollapsed ? 'lg:pl-16 xl:pl-16' : 'lg:pl-64 xl:pl-72'
-      }`}>
-        <main className="flex-1 min-h-screen">
-          <div className="p-4 sm:p-6 lg:p-8">
-            {children}
+        <div className={`
+          fixed z-50 lg:z-30 inset-y-0 left-0 transform bg-white border-r border-gray-200 
+          flex flex-col transition-all duration-300 ease-in-out
+          ${sidebarCollapsed ? 'w-16' : 'w-64 xl:w-72'}
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          {/* Header */}
+          <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+            {!sidebarCollapsed && (
+              <h1 className="text-lg font-bold text-gray-800">POS</h1>
+            )}
+            <button 
+              onClick={toggleSidebar}
+              className="p-1 rounded-md hover:bg-gray-100 lg:block hidden"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-5 h-5" />
+              ) : (
+                <ChevronLeft className="w-5 h-5" />
+              )}
+            </button>
           </div>
-        </main>
+
+          {/* Navegación */}
+          <nav className="flex-1 overflow-y-auto py-4">
+            {filteredNavigation.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavigation(item.id)}
+                className={`w-full flex items-center px-4 py-2 text-sm font-medium ${
+                  currentPage === item.id
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                {!sidebarCollapsed && item.name}
+              </button>
+            ))}
+          </nav>
+
+          {/* Footer Sidebar */}
+          <div className="border-t border-gray-200 p-4 space-y-2">
+            {!sidebarCollapsed && currentStore && (
+              <div className="flex items-center space-x-2">
+                <Store className="w-5 h-5 text-gray-400" />
+                <span className="text-sm font-medium text-gray-700">
+                  {currentStore.name}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={logout}
+              className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              <LogOut className="w-5 h-5 mr-3" />
+              {!sidebarCollapsed && 'Cerrar sesión'}
+            </button>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'lg:pl-16 xl:pl-16' : 'lg:pl-64 xl:pl-72'
+        }`}>
+          {/* Topbar */}
+          <header className="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <div className="flex-1 flex justify-end items-center space-x-4">
+              {/* Estado de conexión */}
+              <ConnectionStatus />
+            </div>
+          </header>
+
+          <main className="flex-1 p-4 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
