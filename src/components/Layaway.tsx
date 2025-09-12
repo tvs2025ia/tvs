@@ -121,7 +121,7 @@ export function LayawayComponent() {
     }
 
     const newLayaway: Layaway = {
-      id: Date.now().toString(),
+      //id: Date.now().toString(),
       storeId: currentStore?.id || '1',
       customerId: selectedCustomerId,
       items: cart,
