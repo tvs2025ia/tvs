@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
+import { useData } from './DataContext';
 
 interface AuthContextType {
   user: User | null;
@@ -20,7 +21,7 @@ export function useAuth() {
   return context;
 }
 
-// Mock users for demo
+// Mock users for demo (fallback when no users in database)
 const mockUsers: User[] = [
   {
     id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -58,16 +59,42 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
+  // Load users from localStorage and Supabase
   useEffect(() => {
-    // Simular verificación de sesión inicial
-    const initializeAuth = () => {
-      console.log('🔍 Verificando sesión existente...');
-      // En una aplicación real, aquí verificarías la sesión con tu backend
-      setIsLoading(false);
+    const loadUsers = async () => {
+      try {
+        // Load from localStorage first
+        const localUsers = localStorage.getItem('cached_users');
+        if (localUsers) {
+          const parsedUsers = JSON.parse(localUsers);
+          setAllUsers([...mockUsers, ...parsedUsers]);
+        } else {
+          setAllUsers(mockUsers);
+        }
+
+        // Try to load from Supabase if online
+        try {
+          const { SupabaseService } = await import('../services/supabaseService');
+          const supabaseUsers = await SupabaseService.getAllUsers();
+          if (supabaseUsers.length > 0) {
+            setAllUsers([...mockUsers, ...supabaseUsers]);
+            localStorage.setItem('cached_users', JSON.stringify(supabaseUsers));
+          }
+        } catch (error) {
+          console.warn('No se pudieron cargar usuarios desde Supabase:', error);
+        }
+
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        setAllUsers(mockUsers);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    initializeAuth();
+    loadUsers();
   }, []);
 
   const login = async (username: string, password: string, storeId?: string): Promise<boolean> => {
@@ -75,16 +102,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       console.log('🔑 Intentando login...', { username, storeId });
       
-      // Autenticación simulada - en una app real, esto llamaría a tu API
-      const foundUser = mockUsers.find(u => u.username === username);
+      // Find user in all available users (mock + database)
+      const foundUser = allUsers.find(u => 
+        u.username === username && u.isActive
+      );
+      
       if (foundUser && password === '123456') {
-        // Para empleados, validar acceso a la tienda
+        // For employees, validate access to the store
         if (foundUser.role === 'employee' && foundUser.storeId !== storeId) {
           console.log('❌ Empleado no tiene acceso a esta tienda');
           return false;
         }
         
-        // Para admin, permitir cualquier tienda o usar su tienda por defecto
+        // For admin, allow any store or use their default store
         const userWithStore = {
           ...foundUser,
           storeId: storeId || foundUser.storeId

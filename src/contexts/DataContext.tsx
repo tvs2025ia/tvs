@@ -221,6 +221,47 @@ export function DataProvider({ children }: DataProviderProps) {
   const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
   const [layaways, setLayaways] = useState<Layaway[]>([]);
 
+  // Load all data including users, suppliers, etc.
+  useEffect(() => {
+    const loadAllData = async () => {
+      if (!user?.storeId) return;
+
+      try {
+        // Load users
+        const usersResult = await SupabaseService.getAllUsers();
+        if (usersResult.length > 0) {
+          setUsers([...mockUsers, ...usersResult]);
+          localStorage.setItem('cached_users', JSON.stringify(usersResult));
+        }
+
+        // Load suppliers
+        const suppliersResult = await SupabaseService.getAllSuppliers();
+        if (suppliersResult.length > 0) {
+          setSuppliers([...mockSuppliers, ...suppliersResult]);
+        }
+
+        // Load payment methods
+        const paymentMethodsResult = await SupabaseService.getAllPaymentMethods();
+        if (paymentMethodsResult.length > 0) {
+          setPaymentMethods(paymentMethodsResult);
+        }
+
+        // Load receipt templates
+        const templatesResult = await SupabaseService.getAllReceiptTemplates(user.storeId);
+        if (templatesResult.length > 0) {
+          setReceiptTemplates([...mockReceiptTemplates, ...templatesResult]);
+        }
+
+      } catch (error) {
+        console.warn('Error cargando datos adicionales:', error);
+      }
+    };
+
+    if (isConnected && user?.storeId) {
+      loadAllData();
+    }
+  }, [isConnected, user?.storeId]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -859,19 +900,90 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const addUser = async (user: User) => {
-    setUsers(prev => [...prev, user]);
+    try {
+      setUsers(prev => {
+        const updated = [...prev, user];
+        const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+        localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+        return updated;
+      });
+      
+      if (isConnected) {
+        const savedUser = await SupabaseService.saveUser(user);
+        setUsers(prev => {
+          const updated = prev.map(u => u.id === savedUser.id ? savedUser : u);
+          const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+          localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+          return updated;
+        });
+        console.log('Usuario guardado en Supabase:', user.username);
+      }
+    } catch (error) {
+      setUsers(prev => {
+        const updated = prev.filter(u => u.id !== user.id);
+        const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+        localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+        return updated;
+      });
+      console.error('Error guardando usuario:', error);
+      throw error;
+    }
   };
 
   const updateUser = async (updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    try {
+      setUsers(prev => {
+        const updated = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
+        const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+        localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+        return updated;
+      });
+      
+      if (isConnected) {
+        const savedUser = await SupabaseService.saveUser(updatedUser);
+        setUsers(prev => {
+          const updated = prev.map(u => u.id === savedUser.id ? savedUser : u);
+          const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+          localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+          return updated;
+        });
+        console.log('Usuario actualizado en Supabase:', updatedUser.username);
+      }
+    } catch (error) {
+      console.error('Error actualizando usuario:', error);
+      throw error;
+    }
   };
 
   const addSupplier = async (supplier: Supplier) => {
-    setSuppliers(prev => [...prev, supplier]);
+    try {
+      setSuppliers(prev => [...prev, supplier]);
+      
+      if (isConnected) {
+        const savedSupplier = await SupabaseService.saveSupplier(supplier);
+        setSuppliers(prev => prev.map(s => s.id === savedSupplier.id ? savedSupplier : s));
+        console.log('Proveedor guardado en Supabase:', supplier.name);
+      }
+    } catch (error) {
+      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+      console.error('Error guardando proveedor:', error);
+      throw error;
+    }
   };
 
   const updateSupplier = async (updatedSupplier: Supplier) => {
-    setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
+    try {
+      setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
+      
+      if (isConnected) {
+        const savedSupplier = await SupabaseService.saveSupplier(updatedSupplier);
+        setSuppliers(prev => prev.map(s => s.id === savedSupplier.id ? savedSupplier : s));
+        console.log('Proveedor actualizado en Supabase:', updatedSupplier.name);
+      }
+    } catch (error) {
+      console.error('Error actualizando proveedor:', error);
+      throw error;
+    }
   };
 
   const openCashRegister = async (register: CashRegister) => {
@@ -1056,17 +1168,52 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const addPaymentMethod = async (paymentMethod: PaymentMethod) => {
-    setPaymentMethods(prev => [...prev, paymentMethod]);
+    try {
+      setPaymentMethods(prev => [...prev, paymentMethod]);
+      
+      if (isConnected) {
+        const savedPaymentMethod = await SupabaseService.savePaymentMethod(paymentMethod);
+        setPaymentMethods(prev => prev.map(pm => pm.id === savedPaymentMethod.id ? savedPaymentMethod : pm));
+        console.log('Método de pago guardado en Supabase:', paymentMethod.name);
+      }
+    } catch (error) {
+      setPaymentMethods(prev => prev.filter(pm => pm.id !== paymentMethod.id));
+      console.error('Error guardando método de pago:', error);
+      throw error;
+    }
   };
 
   const updatePaymentMethod = async (updatedPaymentMethod: PaymentMethod) => {
-    setPaymentMethods(prev => prev.map(pm =>
-      pm.id === updatedPaymentMethod.id ? updatedPaymentMethod : pm
-    ));
+    try {
+      setPaymentMethods(prev => prev.map(pm =>
+        pm.id === updatedPaymentMethod.id ? updatedPaymentMethod : pm
+      ));
+      
+      if (isConnected) {
+        const savedPaymentMethod = await SupabaseService.savePaymentMethod(updatedPaymentMethod);
+        setPaymentMethods(prev => prev.map(pm => pm.id === savedPaymentMethod.id ? savedPaymentMethod : pm));
+        console.log('Método de pago actualizado en Supabase:', updatedPaymentMethod.name);
+      }
+    } catch (error) {
+      console.error('Error actualizando método de pago:', error);
+      throw error;
+    }
   };
 
   const deletePaymentMethod = async (id: string) => {
-    setPaymentMethods(prev => prev.filter(pm => pm.id !== id));
+    try {
+      setPaymentMethods(prev => prev.map(pm => 
+        pm.id === id ? { ...pm, isActive: false } : pm
+      ));
+      
+      if (isConnected) {
+        await SupabaseService.deletePaymentMethod(id);
+        console.log('Método de pago desactivado en Supabase');
+      }
+    } catch (error) {
+      console.error('Error desactivando método de pago:', error);
+      throw error;
+    }
   };
 
   const addExpenseCategory = (category: string) => {
@@ -1080,21 +1227,56 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const addReceiptTemplate = async (template: ReceiptTemplate) => {
-    const normalizedTemplate = {
-      ...template,
-      storeId: template.storeId || user?.storeId || DEFAULT_STORE_ID
-    };
-    setReceiptTemplates(prev => [...prev, normalizedTemplate]);
+    try {
+      const normalizedTemplate = {
+        ...template,
+        storeId: template.storeId || user?.storeId || DEFAULT_STORE_ID
+      };
+      setReceiptTemplates(prev => [...prev, normalizedTemplate]);
+      
+      if (isConnected) {
+        const savedTemplate = await SupabaseService.saveReceiptTemplate(normalizedTemplate);
+        setReceiptTemplates(prev => prev.map(rt => rt.id === savedTemplate.id ? savedTemplate : rt));
+        console.log('Plantilla de recibo guardada en Supabase:', template.name);
+      }
+    } catch (error) {
+      setReceiptTemplates(prev => prev.filter(rt => rt.id !== template.id));
+      console.error('Error guardando plantilla de recibo:', error);
+      throw error;
+    }
   };
 
   const updateReceiptTemplate = async (updatedTemplate: ReceiptTemplate) => {
-    setReceiptTemplates(prev => prev.map(rt =>
-      rt.id === updatedTemplate.id ? updatedTemplate : rt
-    ));
+    try {
+      setReceiptTemplates(prev => prev.map(rt =>
+        rt.id === updatedTemplate.id ? updatedTemplate : rt
+      ));
+      
+      if (isConnected) {
+        const savedTemplate = await SupabaseService.saveReceiptTemplate(updatedTemplate);
+        setReceiptTemplates(prev => prev.map(rt => rt.id === savedTemplate.id ? savedTemplate : rt));
+        console.log('Plantilla de recibo actualizada en Supabase:', updatedTemplate.name);
+      }
+    } catch (error) {
+      console.error('Error actualizando plantilla de recibo:', error);
+      throw error;
+    }
   };
 
   const deleteReceiptTemplate = async (id: string) => {
-    setReceiptTemplates(prev => prev.filter(rt => rt.id !== id));
+    try {
+      setReceiptTemplates(prev => prev.map(rt => 
+        rt.id === id ? { ...rt, isActive: false } : rt
+      ));
+      
+      if (isConnected) {
+        await SupabaseService.deleteReceiptTemplate(id);
+        console.log('Plantilla de recibo desactivada en Supabase');
+      }
+    } catch (error) {
+      console.error('Error desactivando plantilla de recibo:', error);
+      throw error;
+    }
   };
 
   const getActiveReceiptTemplate = (storeId: string): ReceiptTemplate | null => {

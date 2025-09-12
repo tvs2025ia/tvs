@@ -212,6 +212,236 @@ export class OfflineService {
     }
   }
 
+  // Remove item from sync queue
+  static async removeSyncQueueItem(id: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['sync_queue'], 'readwrite');
+      const store = transaction.objectStore('sync_queue');
+      await store.delete(id);
+    } catch (error) {
+      console.error('Error removing sync queue item:', error);
+    }
+  }
+
+  // Increment retry count for sync item
+  static async incrementSyncRetries(id: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['sync_queue'], 'readwrite');
+      const store = transaction.objectStore('sync_queue');
+      const item = await store.get(id);
+      if (item) {
+        item.retries = (item.retries || 0) + 1;
+        item.updatedAt = new Date();
+        await store.put(item);
+      }
+    } catch (error) {
+      console.error('Error incrementing sync retries:', error);
+    }
+  }
+
+  // Mark sale as synced
+  static async markSaleSynced(saleId: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['sales'], 'readwrite');
+      const store = transaction.objectStore('sales');
+      const sale = await store.get(saleId);
+      if (sale) {
+        sale.synced = true;
+        await store.put(sale);
+      }
+    } catch (error) {
+      console.error('Error marking sale as synced:', error);
+    }
+  }
+
+  // Get offline data methods
+  static async getProductsOffline(storeId: string): Promise<Product[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['products'], 'readonly');
+      const store = transaction.objectStore('products');
+      const index = store.index('storeId');
+      const request = index.getAll(storeId);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting products offline:', error);
+      return [];
+    }
+  }
+
+  static async getCustomersOffline(storeId: string): Promise<Customer[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['customers'], 'readonly');
+      const store = transaction.objectStore('customers');
+      const index = store.index('storeId');
+      const request = index.getAll(storeId);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting customers offline:', error);
+      return [];
+    }
+  }
+
+  static async getSalesOffline(storeId: string): Promise<Sale[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['sales'], 'readonly');
+      const store = transaction.objectStore('sales');
+      const index = store.index('storeId');
+      const request = index.getAll(storeId);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting sales offline:', error);
+      return [];
+    }
+  }
+
+  static async getExpensesOffline(storeId: string): Promise<Expense[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['expenses'], 'readonly');
+      const store = transaction.objectStore('expenses');
+      const index = store.index('storeId');
+      const request = index.getAll(storeId);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting expenses offline:', error);
+      return [];
+    }
+  }
+
+  static async getCashMovementsOffline(storeId: string): Promise<CashMovement[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['cash_movements'], 'readonly');
+      const store = transaction.objectStore('cash_movements');
+      const index = store.index('storeId');
+      const request = index.getAll(storeId);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error getting cash movements offline:', error);
+      return [];
+    }
+  }
+
+  // Save data offline methods
+  static async saveProductsOffline(products: Product[]): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['products'], 'readwrite');
+      const store = transaction.objectStore('products');
+      
+      for (const product of products) {
+        await store.put(product);
+      }
+    } catch (error) {
+      console.error('Error saving products offline:', error);
+    }
+  }
+
+  static async saveCustomersOffline(customers: Customer[]): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['customers'], 'readwrite');
+      const store = transaction.objectStore('customers');
+      
+      for (const customer of customers) {
+        await store.put(customer);
+      }
+    } catch (error) {
+      console.error('Error saving customers offline:', error);
+    }
+  }
+
+  // Clear all offline data
+  static async clearAllData(): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const objectStores = ['products', 'customers', 'sales', 'expenses', 'cash_movements', 'sync_queue'];
+      
+      const transaction = db.transaction(objectStores, 'readwrite');
+      
+      for (const storeName of objectStores) {
+        const store = transaction.objectStore(storeName);
+        await store.clear();
+      }
+      
+      console.log('🗑️ Todos los datos offline eliminados');
+    } catch (error) {
+      console.error('Error clearing offline data:', error);
+      throw error;
+    }
+  }
+
+  // Get storage statistics
+  static async getStorageStats(): Promise<{
+    sales: number;
+    products: number;
+    customers: number;
+    expenses: number;
+    pendingSync: number;
+  }> {
+    try {
+      const db = await this.getDB();
+      
+      const [sales, products, customers, expenses, pendingSync] = await Promise.all([
+        this.getStoreCount(db, 'sales'),
+        this.getStoreCount(db, 'products'),
+        this.getStoreCount(db, 'customers'),
+        this.getStoreCount(db, 'expenses'),
+        this.getStoreCount(db, 'sync_queue')
+      ]);
+
+      return { sales, products, customers, expenses, pendingSync };
+    } catch (error) {
+      console.error('Error getting storage stats:', error);
+      return { sales: 0, products: 0, customers: 0, expenses: 0, pendingSync: 0 };
+    }
+  }
+
+  private static async getStoreCount(db: IDBDatabase, storeName: string): Promise<number> {
+    try {
+      if (!db.objectStoreNames.contains(storeName)) {
+        return 0;
+      }
+      
+      const transaction = db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.count();
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      return 0;
+    }
+  }
+
   // Verificar y crear object stores faltantes
   static async ensureObjectStores(): Promise<void> {
     const db = await this.getDB();

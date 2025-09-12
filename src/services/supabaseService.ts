@@ -529,12 +529,286 @@ export class SupabaseService {
     return this.mapSupabaseToStore(data);
   }
 
+  private static mapSupabaseToUser(data: any): User {
+    return {
+      id: data.id,
+      username: data.username,
+      email: data.email,
+      role: data.role,
+      storeId: data.store_id,
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at)
+    };
+  }
+
+  private static mapUserToSupabase(user: User): any {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      store_id: user.storeId,
+      is_active: user.isActive,
+      created_at: user.createdAt.toISOString()
+    };
+  }
+
+  private static mapSupabaseToSupplier(data: any): Supplier {
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      contactPerson: data.contact_person,
+      isActive: data.is_active
+    };
+  }
+
+  private static mapSupplierToSupabase(supplier: Supplier): any {
+    return {
+      id: supplier.id,
+      name: supplier.name,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address,
+      contact_person: supplier.contactPerson,
+      is_active: supplier.isActive
+    };
+  }
+
+  private static mapSupabaseToPaymentMethod(data: any): PaymentMethod {
+    return {
+      id: data.id,
+      name: data.name,
+      discountPercentage: data.discount_percentage,
+      isActive: data.is_active
+    };
+  }
+
+  private static mapPaymentMethodToSupabase(paymentMethod: PaymentMethod): any {
+    return {
+      id: paymentMethod.id,
+      name: paymentMethod.name,
+      discount_percentage: paymentMethod.discountPercentage,
+      is_active: paymentMethod.isActive
+    };
+  }
+
+  private static mapSupabaseToReceiptTemplate(data: any): ReceiptTemplate {
+    return {
+      id: data.id,
+      name: data.name,
+      storeId: data.store_id,
+      headerText: data.header_text,
+      footerText: data.footer_text,
+      showLogo: data.show_logo,
+      logoUrl: data.logo_url,
+      thermalWidth: data.thermal_width,
+      fontSize: data.font_size,
+      showDate: data.show_date,
+      showEmployee: data.show_employee,
+      showCustomer: data.show_customer,
+      showInvoiceNumber: data.show_invoice_number,
+      showPaymentMethod: data.show_payment_method,
+      showItemDetails: data.show_item_details,
+      showTotals: data.show_totals,
+      isActive: data.is_active
+    };
+  }
+
+  private static mapReceiptTemplateToSupabase(template: ReceiptTemplate): any {
+    return {
+      id: template.id,
+      name: template.name,
+      store_id: template.storeId,
+      header_text: template.headerText,
+      footer_text: template.footerText,
+      show_logo: template.showLogo,
+      logo_url: template.logoUrl,
+      thermal_width: template.thermalWidth,
+      font_size: template.fontSize,
+      show_date: template.showDate,
+      show_employee: template.showEmployee,
+      show_customer: template.showCustomer,
+      show_invoice_number: template.showInvoiceNumber,
+      show_payment_method: template.showPaymentMethod,
+      show_item_details: template.showItemDetails,
+      show_totals: template.showTotals,
+      is_active: template.isActive
+    };
+  }
   static async deleteStore(id: string): Promise<void> {
     const { error } = await supabase
       .from('stores')
       .update({ is_active: false })
       .eq('id', id);
     if (error) throw new Error(`Error deactivating store: ${error.message}`);
+  }
+
+  // Users
+  static async getAllUsers(): Promise<User[]> {
+    try {
+      const usersExists = await this.tableExists('users');
+      if (!usersExists) {
+        console.warn('Users table does not exist');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('username');
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        return [];
+      }
+      
+      return (data || []).map(this.mapSupabaseToUser);
+    } catch (error) {
+      console.error('Error in getAllUsers:', error);
+      return [];
+    }
+  }
+
+  static async saveUser(user: User): Promise<User> {
+    const supabaseUser = this.mapUserToSupabase(user);
+    const { data, error } = await supabase
+      .from('users')
+      .upsert(supabaseUser)
+      .select()
+      .single();
+    if (error) throw new Error(`Error saving user: ${error.message}`);
+    return this.mapSupabaseToUser(data);
+  }
+
+  // Suppliers
+  static async getAllSuppliers(): Promise<Supplier[]> {
+    try {
+      const suppliersExists = await this.tableExists('suppliers');
+      if (!suppliersExists) {
+        console.warn('Suppliers table does not exist');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching suppliers:', error);
+        return [];
+      }
+      
+      return (data || []).map(this.mapSupabaseToSupplier);
+    } catch (error) {
+      console.error('Error in getAllSuppliers:', error);
+      return [];
+    }
+  }
+
+  static async saveSupplier(supplier: Supplier): Promise<Supplier> {
+    const supabaseSupplier = this.mapSupplierToSupabase(supplier);
+    const { data, error } = await supabase
+      .from('suppliers')
+      .upsert(supabaseSupplier)
+      .select()
+      .single();
+    if (error) throw new Error(`Error saving supplier: ${error.message}`);
+    return this.mapSupabaseToSupplier(data);
+  }
+
+  // Payment Methods
+  static async getAllPaymentMethods(): Promise<PaymentMethod[]> {
+    try {
+      const paymentMethodsExists = await this.tableExists('payment_methods');
+      if (!paymentMethodsExists) {
+        console.warn('Payment methods table does not exist');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching payment methods:', error);
+        return [];
+      }
+      
+      return (data || []).map(this.mapSupabaseToPaymentMethod);
+    } catch (error) {
+      console.error('Error in getAllPaymentMethods:', error);
+      return [];
+    }
+  }
+
+  static async savePaymentMethod(paymentMethod: PaymentMethod): Promise<PaymentMethod> {
+    const supabasePaymentMethod = this.mapPaymentMethodToSupabase(paymentMethod);
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .upsert(supabasePaymentMethod)
+      .select()
+      .single();
+    if (error) throw new Error(`Error saving payment method: ${error.message}`);
+    return this.mapSupabaseToPaymentMethod(data);
+  }
+
+  static async deletePaymentMethod(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('payment_methods')
+      .update({ is_active: false })
+      .eq('id', id);
+    if (error) throw new Error(`Error deactivating payment method: ${error.message}`);
+  }
+
+  // Receipt Templates
+  static async getAllReceiptTemplates(storeId?: string): Promise<ReceiptTemplate[]> {
+    try {
+      const templatesExists = await this.tableExists('receipt_templates');
+      if (!templatesExists) {
+        console.warn('Receipt templates table does not exist');
+        return [];
+      }
+
+      let query = supabase.from('receipt_templates').select('*');
+      if (storeId) {
+        query = query.eq('store_id', storeId);
+      }
+      const { data, error } = await query.order('name');
+      
+      if (error) {
+        console.error('Error fetching receipt templates:', error);
+        return [];
+      }
+      
+      return (data || []).map(this.mapSupabaseToReceiptTemplate);
+    } catch (error) {
+      console.error('Error in getAllReceiptTemplates:', error);
+      return [];
+    }
+  }
+
+  static async saveReceiptTemplate(template: ReceiptTemplate): Promise<ReceiptTemplate> {
+    const supabaseTemplate = this.mapReceiptTemplateToSupabase(template);
+    const { data, error } = await supabase
+      .from('receipt_templates')
+      .upsert(supabaseTemplate)
+      .select()
+      .single();
+    if (error) throw new Error(`Error saving receipt template: ${error.message}`);
+    return this.mapSupabaseToReceiptTemplate(data);
+  }
+
+  static async deleteReceiptTemplate(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('receipt_templates')
+      .update({ is_active: false })
+      .eq('id', id);
+    if (error) throw new Error(`Error deactivating receipt template: ${error.message}`);
   }
 
   // Check Supabase connection with better error handling
