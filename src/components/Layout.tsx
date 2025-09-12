@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
 import { useData } from '../contexts/DataContext';
 import { useOfflineSync } from '../hooks/useOfflineSync';
-import { ProductService } from '../services/ProductService';
+import { ProductService } from '../services/productService';
 import { 
   Menu, 
   X, 
