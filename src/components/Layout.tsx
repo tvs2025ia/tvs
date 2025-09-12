@@ -10,7 +10,6 @@ import {
   ShoppingCart, 
   Package, 
   Users, 
-  TrendingUp, 
   Settings,
   LogOut,
   DollarSign,
@@ -43,7 +42,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const { forceSyncNow, pendingSyncCount } = useOfflineSync();
   const [syncing, setSyncing] = useState(false);
 
-  // Detectar el tamaño de pantalla
+  // Detectar tamaño de pantalla
   useEffect(() => {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 1024;
@@ -68,14 +67,14 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Guardar el estado de colapso en localStorage
+  // Guardar el estado del sidebar
   useEffect(() => {
     if (!isMobile) {
       localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
     }
   }, [sidebarCollapsed, isMobile]);
 
-  // Cerrar sidebar cuando se hace clic fuera en móvil
+  // Bloquear scroll cuando el sidebar está abierto en móvil
   useEffect(() => {
     if (sidebarOpen && isMobile) {
       document.body.style.overflow = 'hidden';
@@ -185,7 +184,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
         </div>
       )}
 
-      {/* Sidebar */}
       <div className="flex">
         {/* Overlay móvil */}
         {sidebarOpen && isMobile && (
@@ -195,13 +193,13 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
           />
         )}
 
+        {/* Sidebar */}
         <div className={`
           fixed z-50 lg:z-30 inset-y-0 left-0 transform bg-white border-r border-gray-200 
           flex flex-col transition-all duration-300 ease-in-out
           ${sidebarCollapsed ? 'w-16' : 'w-64 xl:w-72'}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
-          {/* Header */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
             {!sidebarCollapsed && (
               <h1 className="text-lg font-bold text-gray-800">POS</h1>
@@ -218,7 +216,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
             </button>
           </div>
 
-          {/* Navegación */}
           <nav className="flex-1 overflow-y-auto py-4">
             {filteredNavigation.map((item) => (
               <button
@@ -236,7 +233,6 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
             ))}
           </nav>
 
-          {/* Footer Sidebar */}
           <div className="border-t border-gray-200 p-4 space-y-2">
             {!sidebarCollapsed && currentStore && (
               <div className="flex items-center space-x-2">
@@ -256,7 +252,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
           </div>
         </div>
 
-        {/* Main content */}
+        {/* Contenido principal */}
         <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
           sidebarCollapsed ? 'lg:pl-16 xl:pl-16' : 'lg:pl-64 xl:pl-72'
         }`}>
@@ -270,6 +266,21 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
             </button>
 
             <div className="flex-1 flex justify-end items-center space-x-4">
+              {/* ✅ Selector de tienda solo para admin */}
+              {user?.role === 'admin' && stores.length > 0 && (
+                <select
+                  value={currentStore?.id || ''}
+                  onChange={(e) => handleStoreChange(e.target.value)}
+                  className="text-sm border rounded px-2 py-1"
+                >
+                  {stores.map(store => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               {/* Estado de conexión */}
               <ConnectionStatus />
             </div>
