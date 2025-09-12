@@ -4,7 +4,6 @@ import { StoreProvider } from './contexts/StoreContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { useOfflineSync } from './hooks/useOfflineSync';
-import { OfflineSyncStatus } from './components/OfflineSyncStatus';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -251,11 +250,6 @@ function AppContent() {
         loadingProgress={loadingProgress}
         connectionError={connectionError}
       />
-      
-      {/* ✅ Estado de sincronización offline */}
-      <div className="mb-4">
-        <OfflineSyncStatus />
-      </div>
       
       {renderPage()}
     </Layout>
