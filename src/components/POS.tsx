@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useStore } from '../contexts/StoreContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,7 +14,9 @@ import {
   X,
   Package,
   Edit3,
-  User
+  User,
+  Grid3X3,
+  List
 } from 'lucide-react';
 
 export function POS() {
@@ -26,6 +28,7 @@ export function POS() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(paymentMethods[0]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   // Estados para pago/impresión
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -50,6 +53,21 @@ export function POS() {
   const paymentDeduction = finalTotal * (selectedPaymentMethod.discountPercentage / 100);
   const netTotal = finalTotal - paymentDeduction;
   const invoiceNumber = `INV-${Date.now()}`;
+
+  // Cargar vista desde localStorage
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem('posViewMode');
+    if (savedViewMode === 'grid' || savedViewMode === 'list') {
+      setViewMode(savedViewMode);
+    }
+  }, []);
+
+  // Guardar vista en localStorage
+  const toggleViewMode = () => {
+    const newViewMode = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(newViewMode);
+    localStorage.setItem('posViewMode', newViewMode);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -230,6 +248,31 @@ export function POS() {
             {product.stock === 0 ? 'Sin Stock' : 'Agregar'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+
+  const ProductGridCard = ({ product }: { product: Product }) => (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+      <LocalImage
+        src={product.imageUrl}
+        alt={product.name}
+        className="w-full h-32 object-cover rounded-lg mb-3"
+      />
+      <div className="space-y-2">
+        <h3 className="font-semibold text-gray-900 text-sm truncate">{product.name}</h3>
+        <p className="text-xs text-gray-500 truncate">{product.category}</p>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-bold text-green-600">{formatCurrency(product.price)}</span>
+          <span className="text-xs text-gray-500">{product.stock} und.</span>
+        </div>
+        <button
+          onClick={() => addToCart(product)}
+          disabled={product.stock === 0}
+          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs"
+        >
+          {product.stock === 0 ? 'Sin Stock' : 'Agregar'}
+        </button>
       </div>
     </div>
   );
