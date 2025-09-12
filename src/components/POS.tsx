@@ -16,7 +16,9 @@ import {
   Edit3,
   User,
   Grid3X3,
-  List
+  List,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 export function POS() {
@@ -29,6 +31,7 @@ export function POS() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [isCartExpanded, setIsCartExpanded] = useState(false);
 
   // Estados para pago/impresión
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -53,6 +56,26 @@ export function POS() {
   const paymentDeduction = finalTotal * (selectedPaymentMethod.discountPercentage / 100);
   const netTotal = finalTotal - paymentDeduction;
   const invoiceNumber = `INV-${Date.now()}`;
+
+  // Detectar si es dispositivo móvil
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+      // En móvil, colapsar el carrito por defecto
+      if (window.innerWidth < 1024) {
+        setIsCartExpanded(false);
+      } else {
+        setIsCartExpanded(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Establecer el estado inicial
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Cargar vista desde localStorage
   useEffect(() => {
@@ -280,7 +303,7 @@ export function POS() {
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-gray-50 overflow-hidden">
       {/* Products Section */}
-      <div className="flex-1 lg:w-1/2 p-3 sm:p-6 overflow-auto">
+      <div className={`${isMobile ? (isCartExpanded ? 'hidden' : 'flex-1') : 'flex-1 lg:w-1/2'} p-3 sm:p-6 overflow-auto`}>
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Punto de Venta</h1>
@@ -343,18 +366,49 @@ export function POS() {
         )}
       </div>
 
-      {/* Cart Section */}
-      <div className="w-full lg:w-1/2 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col max-h-[50vh] lg:max-h-none">
-        <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Carrito</h2>
-            <div className="flex items-center space-x-2">
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-              <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full">
+      {/* Cart Section - Mobile Toggle Button */}
+      {isMobile && (
+        <div className="lg:hidden fixed bottom-4 right-4 z-30">
+          <button
+            onClick={() => setIsCartExpanded(!isCartExpanded)}
+            className="bg-blue-600 text-white p-4 rounded-full shadow-lg flex items-center justify-center"
+          >
+            <ShoppingCart className="w-6 h-6" />
+            {cart.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {cart.length}
               </span>
-            </div>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Cart Section */}
+      <div className={`
+        ${isMobile 
+          ? `fixed inset-0 bg-white z-40 transform transition-transform duration-300 ${isCartExpanded ? 'translate-y-0' : 'translate-y-full'}` 
+          : 'w-full lg:w-1/2 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col max-h-[50vh] lg:max-h-none'
+        }
+      `}>
+        {/* Cart Header */}
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
+          <div className="flex items-center">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Carrito</h2>
+            {cart.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full">
+                {cart.length}
+              </span>
+            )}
           </div>
+          
+          {isMobile && (
+            <button 
+              onClick={() => setIsCartExpanded(false)}
+              className="p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Cart Items */}
@@ -363,67 +417,65 @@ export function POS() {
             <div className="text-center py-8 sm:py-12">
               <ShoppingCart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-sm sm:text-base">El carrito está vacío</p>
+              {isMobile && (
+                <button
+                  onClick={() => setIsCartExpanded(false)}
+                  className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Continuar comprando
+                </button>
+              )}
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-4">
               {cart.map(item => {
                 const product = products.find(p => p.id === item.productId);
                 return (
                   <div key={item.productId} className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-medium text-gray-900 text-sm sm:text-base flex-1 pr-2">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">
                         {item.productName}
-                      </h4>
+                      </h3>
                       <button
                         onClick={() => removeFromCart(item.productId)}
-                        className="text-red-500 hover:text-red-700 flex-shrink-0"
+                        className="text-red-500 hover:text-red-700"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                     
-                    {/* Precio unitario editable */}
-                    <div className="mb-3">
-                      <label className="block text-xs text-gray-600 mb-1">Precio unitario:</label>
-                      <div className="flex items-center space-x-2">
-                        <Edit3 className="w-3 h-3 text-gray-400" />
-                        <input
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => updateUnitPrice(item.productId, Number(e.target.value) || 0)}
-                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          className="w-7 h-7 sm:w-8 sm:h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
                         >
-                          <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-6 sm:w-8 text-center font-medium text-sm sm:text-base">
-                          {item.quantity}
-                        </span>
+                        <span className="text-sm sm:text-base font-medium">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          disabled={product ? item.quantity >= product.stock : false}
-                          className="w-7 h-7 sm:w-8 sm:h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          disabled={product && item.quantity >= product.stock}
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
+                      
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Precio:</span>
+                          <input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) => updateUnitPrice(item.productId, Number(e.target.value))}
+                            className="w-16 sm:w-20 text-sm border border-gray-300 rounded px-1 py-1"
+                            min="0"
+                          />
+                        </div>
+                        <div className="font-bold text-green-600 text-sm sm:text-base">
                           {formatCurrency(item.total)}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          {formatCurrency(item.unitPrice)} c/u
-                        </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -435,29 +487,91 @@ export function POS() {
 
         {/* Cart Summary */}
         {cart.length > 0 && (
-          <div className="border-t border-gray-200 p-4 sm:p-6 space-y-3 sm:space-y-4 flex-shrink-0">
-            <div className="space-y-2 pt-2 border-t border-gray-200">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
+          <div className="border-t border-gray-200 p-4 sm:p-6 flex-shrink-0">
+            <div className="space-y-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 text-sm sm:text-base">Subtotal:</span>
+                <span className="font-medium text-sm sm:text-base">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
-                <span>Total:</span>
-                <span>{formatCurrency(subtotal)}</span>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 text-sm sm:text-base">Descuento:</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(Number(e.target.value))}
+                    className="w-16 sm:w-20 text-sm border border-gray-300 rounded px-2 py-1"
+                    min="0"
+                  />
+                  <span className="text-sm">COP</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 text-sm sm:text-base">Envío:</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    value={shippingCost}
+                    onChange={(e) => setShippingCost(Number(e.target.value))}
+                    className="w-16 sm:w-20 text-sm border border-gray-300 rounded px-2 py-1"
+                    min="0"
+                  />
+                  <span className="text-sm">COP</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <span className="font-semibold text-base sm:text-lg">Total:</span>
+                <span className="font-bold text-green-600 text-base sm:text-lg">
+                  {formatCurrency(finalTotal)}
+                </span>
               </div>
             </div>
-            <div className="space-y-2">
+            
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-gray-500" />
+                <select
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">Cliente general</option>
+                  {storeCustomers.map(customer => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name} - {customer.phone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Truck className="w-4 h-4 text-gray-500" />
+                <select
+                  value={selectedPaymentMethod.id}
+                  onChange={(e) => {
+                    const method = paymentMethods.find(pm => pm.id === e.target.value);
+                    if (method) setSelectedPaymentMethod(method);
+                  }}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  {paymentMethods.map(method => (
+                    <option key={method.id} value={method.id}>
+                      {method.name} ({method.discountPercentage}% desc.)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="mt-6">
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="w-full bg-green-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
+                className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-medium text-base"
               >
-                Procesar Venta
-              </button>
-              <button
-                onClick={clearCart}
-                className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm"
-              >
-                Limpiar Carrito
+                Procesar Venta - {formatCurrency(finalTotal)}
               </button>
             </div>
           </div>
@@ -466,232 +580,175 @@ export function POS() {
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Procesar Pago</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">Confirmar Pago</h3>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              
+              {discount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Descuento:</span>
+                  <span>-{formatCurrency(discount)}</span>
+                </div>
+              )}
+              
+              {shippingCost > 0 && (
+                <div className="flex justify-between">
+                  <span>Envío:</span>
+                  <span>+{formatCurrency(shippingCost)}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between font-bold border-t pt-2">
+                <span>Total:</span>
+                <span>{formatCurrency(finalTotal)}</span>
+              </div>
+              
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Método de pago:</span>
+                <span>{selectedPaymentMethod.name}</span>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Monto recibido:</label>
+              <input
+                type="number"
+                value={amountReceived}
+                onChange={(e) => setAmountReceived(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                placeholder="0"
+                min={finalTotal}
+              />
+            </div>
+            
+            {amountReceived && Number(amountReceived) > 0 && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex justify-between">
+                  <span>Cambio:</span>
+                  <span className="font-medium">
+                    {formatCurrency(Math.max(0, Number(amountReceived) - finalTotal))}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex space-x-3">
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
               >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                Cancelar
               </button>
-            </div>
-            <div className="space-y-4">
-              {/* Cliente */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <User className="w-4 h-4 inline mr-1" />
-                  Cliente
-                </label>
-                <select
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Venta sin cliente</option>
-                  {storeCustomers.map(customer => (
-                    <option key={customer.id} value={customer.id}>{customer.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Descuento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descuento</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={discount || ''}
-                    onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <span className="text-sm text-gray-500">COP</span>
-                </div>
-              </div>
-
-              {/* Costo de envío */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Truck className="w-4 h-4 inline mr-1" />
-                  Costo de envío
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={shippingCost || ''}
-                    onChange={(e) => setShippingCost(Number(e.target.value) || 0)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <span className="text-sm text-gray-500">COP</span>
-                </div>
-              </div>
-
-              {/* Método de Pago */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Método de Pago
-                </label>
-                <select
-                  value={selectedPaymentMethod.id}
-                  onChange={(e) => {
-                    const method = paymentMethods.find(m => m.id === e.target.value);
-                    if (method) setSelectedPaymentMethod(method);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {paymentMethods.filter(m => m.isActive).map(method => (
-                    <option key={method.id} value={method.id}>
-                      {method.name} {method.discountPercentage > 0 && `(-${method.discountPercentage}%)`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Monto recibido */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Monto recibido</label>
-                <input
-                  type="number"
-                  value={amountReceived}
-                  onChange={e => setAmountReceived(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  min={finalTotal}
-                  placeholder="¿Cuánto paga el cliente?"
-                />
-              </div>
-
-              {/* Resumen de pago */}
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold">{formatCurrency(subtotal)}</span>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Descuento:</span>
-                    <span>-{formatCurrency(discount)}</span>
-                  </div>
-                )}
-                {shippingCost > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Envío:</span>
-                    <span>{formatCurrency(shippingCost)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm font-medium pt-2 border-t border-gray-200">
-                  <span>Total a cobrar:</span>
-                  <span>{formatCurrency(finalTotal)}</span>
-                </div>
-                {(amountReceived !== '' && Number(amountReceived) >= finalTotal) && (
-                  <div className="flex justify-between text-sm text-green-700 pt-2 border-t border-gray-200">
-                    <span>Cambio a devolver:</span>
-                    <span>{formatCurrency(Number(amountReceived) - finalTotal)}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 sm:py-3 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleConfirmPayment}
-                  disabled={processingPayment || amountReceived === '' || Number(amountReceived) < finalTotal}
-                  className="flex-1 bg-green-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium"
-                >
-                  Confirmar Pago
-                </button>
-              </div>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={!amountReceived || Number(amountReceived) < finalTotal || processingPayment}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {processingPayment ? 'Procesando...' : 'Confirmar Pago'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Receipt & Print Modal */}
+      {/* Receipt Modal */}
       {showReceiptModal && lastSaleData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-[320px] p-4 text-sm font-mono" id="receipt">
-            {/* Header */}
-            {activeReceiptTemplate?.headerText && (
-              <div className="text-center font-bold mb-2 whitespace-pre-line">
-                {activeReceiptTemplate.headerText}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">Recibo de Venta</h3>
+            <div id="receipt" className="bg-white text-black p-4 text-xs">
+              <div className="text-center mb-4">
+                <h2 className="font-bold text-lg uppercase">{currentStore.name}</h2>
+                <p>{currentStore.address}</p>
+                <p>Tel: {currentStore.phone}</p>
+                <p>NIT: {currentStore.nit}</p>
               </div>
-            )}
-
-            {/* Date */}
-            {activeReceiptTemplate?.showDate && (
-              <div>Fecha: {new Date(lastSaleData.date).toLocaleString()}</div>
-            )}
-
-            {/* Invoice Number */}
-            {activeReceiptTemplate?.showInvoiceNumber && (
-              <div>Factura: {lastSaleData.invoiceNumber}</div>
-            )}
-
-            {/* Employee */}
-            {activeReceiptTemplate?.showEmployee && (
-              <div>Empleado: {user?.username}</div>
-            )}
-
-            {/* Customer */}
-            {activeReceiptTemplate?.showCustomer && (
-              <div>Cliente: {lastSaleData.customerId ? storeCustomers.find(c => c.id === lastSaleData.customerId)?.name : 'Venta rápida'}</div>
-            )}
-
-            {/* Payment Method */}
-            {activeReceiptTemplate?.showPaymentMethod && (
-              <div>Método de Pago: {lastSaleData.paymentMethod}</div>
-            )}
-
-            <hr className="my-2" />
-
-            {/* Item Details */}
-            {activeReceiptTemplate?.showItemDetails && lastSaleData.items.map(item => (
-              <div key={item.productId} className="flex justify-between">
-                <span>{item.productName} x{item.quantity}</span>
-                <span>{formatCurrency(item.total)}</span>
+              
+              <div className="border-t border-b border-black py-2 my-2">
+                <p><strong>Factura:</strong> {lastSaleData.invoiceNumber}</p>
+                <p><strong>Fecha:</strong> {lastSaleData.date.toLocaleString()}</p>
+                <p><strong>Atendió:</strong> {user.name}</p>
+                {lastSaleData.customerId && (
+                  <p><strong>Cliente:</strong> {storeCustomers.find(c => c.id === lastSaleData.customerId)?.name}</p>
+                )}
               </div>
-            ))}
-
-            <hr className="my-2" />
-
-            {/* Totals */}
-            {activeReceiptTemplate?.showTotals && (
-              <>
-                <div className="flex justify-between"><span>Subtotal:</span><span>{formatCurrency(lastSaleData.subtotal)}</span></div>
+              
+              <table className="w-full mb-4">
+                <thead>
+                  <tr className="border-b border-black">
+                    <th className="text-left">Producto</th>
+                    <th className="text-right">Cant</th>
+                    <th className="text-right">Precio</th>
+                    <th className="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastSaleData.items.map(item => (
+                    <tr key={item.productId} className="border-b border-gray-300">
+                      <td className="py-1">{item.productName}</td>
+                      <td className="text-right">{item.quantity}</td>
+                      <td className="text-right">{formatCurrency(item.unitPrice)}</td>
+                      <td className="text-right">{formatCurrency(item.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              <div className="border-t border-black pt-2">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>{formatCurrency(lastSaleData.subtotal)}</span>
+                </div>
+                
                 {lastSaleData.discount > 0 && (
-                  <div className="flex justify-between"><span>Descuento:</span><span>-{formatCurrency(lastSaleData.discount)}</span></div>
+                  <div className="flex justify-between text-red-600">
+                    <span>Descuento:</span>
+                    <span>-{formatCurrency(lastSaleData.discount)}</span>
+                  </div>
                 )}
+                
                 {lastSaleData.shippingCost > 0 && (
-                  <div className="flex justify-between"><span>Envío:</span><span>{formatCurrency(lastSaleData.shippingCost)}</span></div>
+                  <div className="flex justify-between">
+                    <span>Envío:</span>
+                    <span>+{formatCurrency(lastSaleData.shippingCost)}</span>
+                  </div>
                 )}
-                <div className="flex justify-between font-bold"><span>Total:</span><span>{formatCurrency(lastSaleData.total)}</span></div>
-                <div className="flex justify-between"><span>Pagó:</span><span>{formatCurrency(Number(amountReceived))}</span></div>
-                <div className="flex justify-between"><span>Cambio:</span><span>{formatCurrency(Number(amountReceived) - lastSaleData.total)}</span></div>
-              </>
-            )}
-
-            <hr className="my-2" />
-
-            {/* Footer */}
-            {activeReceiptTemplate?.footerText && (
-              <div className="text-center text-xs whitespace-pre-line">
-                {activeReceiptTemplate.footerText}
+                
+                <div className="flex justify-between font-bold border-t border-black mt-2 pt-2">
+                  <span>TOTAL:</span>
+                  <span>{formatCurrency(lastSaleData.total)}</span>
+                </div>
+                
+                <div className="mt-4 text-center">
+                  <p>¡Gracias por su compra!</p>
+                  <p>{currentStore.footerMessage}</p>
+                </div>
               </div>
-            )}
-
-            <button
-              onClick={handlePrintReceipt}
-              className="w-full bg-blue-600 text-white py-2 mt-4 rounded-lg hover:bg-blue-700"
-            >
-              Imprimir recibo
-            </button>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false);
+                  if (lastSaleData) processSale(lastSaleData);
+                }}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
+              >
+                Saltar Impresión
+              </button>
+              <button
+                onClick={handlePrintReceipt}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+              >
+                Imprimir Recibo
+              </button>
+            </div>
           </div>
         </div>
       )}
