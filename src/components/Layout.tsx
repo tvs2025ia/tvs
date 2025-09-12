@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
 import { useData } from '../contexts/DataContext';
 import { useOfflineSync } from '../hooks/useOfflineSync';
+import { ProductService } from '../services/ProductService';
 import { 
   Menu, 
   X, 
@@ -38,7 +39,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
   const { stores, currentStore, setCurrentStore } = useStore();
-  const { isConnected } = useData();
+  const { isConnected, refreshData } = useData();
   const { forceSyncNow, pendingSyncCount } = useOfflineSync();
   const [syncing, setSyncing] = useState(false);
 
@@ -124,7 +125,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  // ✅ Estado de conexión con botón de sync
+  // ✅ Estado de conexión con botón de sync (unifica OfflineSync + Inventario)
   const ConnectionStatus = () => {
     const statusIcon = isConnected ? (
       <Cloud className="w-4 h-4 text-green-500" />
@@ -138,7 +139,16 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     const handleManualSync = async () => {
       setSyncing(true);
       try {
+        console.log("🔄 Iniciando sincronización completa desde Layout...");
+        // 1. Sincronizar datos offline → online
         await forceSyncNow();
+        // 2. Sincronizar inventarios desde Supabase
+        await ProductService.syncProductsFromSupabase();
+        // 3. Refrescar datos globales
+        await refreshData();
+        console.log("✅ Sincronización completa finalizada");
+      } catch (error) {
+        console.error("❌ Error en sincronización:", error);
       } finally {
         setSyncing(false);
       }
@@ -281,7 +291,7 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
                 </select>
               )}
 
-              {/* Estado de conexión */}
+              {/* Estado de conexión + botón sync */}
               <ConnectionStatus />
             </div>
           </header>
