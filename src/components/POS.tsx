@@ -541,7 +541,6 @@ export function POS() {
 
     {/* Modal de recibo */}
       {showReceiptModal && lastSaleData && (
-      {showReceiptModal && lastSaleData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-[320px] p-4 text-sm font-mono" id="receipt">
             {activeReceiptTemplate?.headerText && (<div className="text-center font-bold mb-2 whitespace-pre-line">{activeReceiptTemplate.headerText}</div>)}
