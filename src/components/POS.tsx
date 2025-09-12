@@ -237,9 +237,35 @@ export function POS() {
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-gray-50 overflow-hidden">
       {/* Products Section */}
-      <div className="flex-1 p-3 sm:p-6 overflow-auto">
+      <div className="flex-1 lg:w-1/2 p-3 sm:p-6 overflow-auto">
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Punto de Venta</h1>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Punto de Venta</h1>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={toggleViewMode}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'list' 
+                    ? 'bg-blue-100 text-blue-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Vista lista"
+              >
+                <List className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <button
+                onClick={toggleViewMode}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'grid' 
+                    ? 'bg-blue-100 text-blue-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Vista cuadrícula"
+              >
+                <Grid3X3 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
             <input
@@ -251,11 +277,21 @@ export function POS() {
             />
           </div>
         </div>
-        <div className="space-y-3">
-          {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        
+        {viewMode === 'list' ? (
+          <div className="space-y-3">
+            {filteredProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredProducts.map(product => (
+              <ProductGridCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+        
         {filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
@@ -265,7 +301,7 @@ export function POS() {
       </div>
 
       {/* Cart Section */}
-      <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col max-h-[50vh] lg:max-h-none">
+      <div className="w-full lg:w-1/2 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col max-h-[50vh] lg:max-h-none">
         <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900">Carrito</h2>
