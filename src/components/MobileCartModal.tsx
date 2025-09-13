@@ -1,5 +1,4 @@
 import React from "react";
-import { useStore } from "../contexts/StoreContext";
 
 interface MobileCartModalProps {
   cart: { productId: string; quantity: number }[];
@@ -9,6 +8,8 @@ interface MobileCartModalProps {
   setSelectedCustomerId: (id: string) => void;
   handleCreateLayaway: () => void;
   closeModal: () => void;
+  storeCustomers: any[];
+  storeProducts: any[];
 }
 
 export const MobileCartModal: React.FC<MobileCartModalProps> = ({
@@ -19,9 +20,9 @@ export const MobileCartModal: React.FC<MobileCartModalProps> = ({
   setSelectedCustomerId,
   handleCreateLayaway,
   closeModal,
+  storeCustomers,
+  storeProducts,
 }) => {
-  const { storeProducts = [], storeCustomers = [] } = useStore();
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-end z-50">
       <div className="bg-white w-full md:max-w-md rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">

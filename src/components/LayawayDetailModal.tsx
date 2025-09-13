@@ -4,18 +4,22 @@ import { X } from "lucide-react";
 interface Props {
   layaway: any;
   closeModal: () => void;
+  storeCustomers: any[];
 }
 
 export const LayawayDetailModal: React.FC<Props> = ({
   layaway,
   closeModal,
+  storeCustomers,
 }) => {
-  const totalPaid = layaway.payments.reduce(
+  const totalPaid = layaway.payments?.reduce(
     (sum: number, p: any) => sum + p.amount,
     0
-  );
+  ) || 0;
   const remainingBalance = layaway.total - totalPaid;
   const progress = (totalPaid / layaway.total) * 100;
+
+  const customer = storeCustomers.find(c => c.id === layaway.customerId);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
@@ -29,7 +33,7 @@ export const LayawayDetailModal: React.FC<Props> = ({
 
         <h2 className="text-lg font-bold mb-4">Detalle del Separado</h2>
 
-        <p className="font-medium">Cliente: {layaway.customerId}</p>
+        <p className="font-medium">Cliente: {customer?.name || "Cliente no encontrado"}</p>
 
         <div className="mt-3 space-y-1">
           <p>
@@ -58,7 +62,7 @@ export const LayawayDetailModal: React.FC<Props> = ({
         <div className="mt-4">
           <h3 className="font-medium mb-2">Pagos:</h3>
           <ul className="space-y-1 max-h-40 overflow-y-auto">
-            {layaway.payments.map((p: any, i: number) => (
+            {layaway.payments?.map((p: any, i: number) => (
               <li
                 key={i}
                 className="flex justify-between text-sm border-b pb-1"
@@ -66,7 +70,9 @@ export const LayawayDetailModal: React.FC<Props> = ({
                 <span>{new Date(p.date).toLocaleDateString()}</span>
                 <span>${p.amount}</span>
               </li>
-            ))}
+            )) || (
+              <li className="text-sm text-gray-500">No hay pagos registrados</li>
+            )}
           </ul>
         </div>
       </div>
