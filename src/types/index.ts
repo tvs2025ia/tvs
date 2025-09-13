@@ -3,9 +3,11 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  passwordHash?: string;
   role: 'admin' | 'employee';
   storeId: string;
   createdAt: Date;
+  lastLogin?: Date;
   isActive: boolean;
 }
 

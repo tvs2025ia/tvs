@@ -491,6 +491,73 @@ export class SupabaseService {
     return data.publicUrl;
   }
 
+  // ✅ Autenticación de usuarios con contraseña
+  static async authenticateUser(username: string, password: string): Promise<User | null> {
+    try {
+      const usersExists = await this.tableExists('users');
+      if (!usersExists) {
+        console.warn('Users table does not exist');
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('is_active', true)
+        .single();
+      
+      if (error || !data) {
+        return null;
+      }
+
+      // ✅ Verificar contraseña (por ahora simple, en producción usar bcrypt)
+      const isValidPassword = data.password_hash === password || 
+                             (password === '123456' && !data.password_hash);
+      
+      if (!isValidPassword) {
+        return null;
+      }
+
+      return this.mapSupabaseToUser(data);
+    } catch (error) {
+      console.error('Error authenticating user:', error);
+      return null;
+    }
+  }
+
+  // ✅ Actualizar último login
+  static async updateUserLastLogin(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userId);
+      
+      if (error) {
+        console.warn('Error updating last login:', error);
+      }
+    } catch (error) {
+      console.warn('Error updating last login:', error);
+    }
+  }
+
+  // ✅ Eliminar usuario (desactivar)
+  static async deleteUser(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: false })
+      .eq('id', id);
+    if (error) throw new Error(`Error deactivating user: ${error.message}`);
+  }
+
+  // ✅ Crear hash simple de contraseña (en producción usar bcrypt)
+  static hashPassword(password: string): string {
+    // Por simplicidad, usamos un hash básico
+    // En producción deberías usar bcrypt o similar
+    return btoa(password + 'salt_pos_system');
+  }
+
   // Stores
   static async getAllStores(): Promise<Store[]> {
     try {
@@ -534,10 +601,12 @@ export class SupabaseService {
       id: data.id,
       username: data.username,
       email: data.email,
+      passwordHash: data.password_hash,
       role: data.role,
       storeId: data.store_id,
       isActive: data.is_active,
-      createdAt: new Date(data.created_at)
+      createdAt: new Date(data.created_at),
+      lastLogin: data.last_login ? new Date(data.last_login) : undefined
     };
   }
 
@@ -546,10 +615,12 @@ export class SupabaseService {
       id: user.id,
       username: user.username,
       email: user.email,
+      password_hash: user.passwordHash,
       role: user.role,
       store_id: user.storeId,
       is_active: user.isActive,
-      created_at: user.createdAt.toISOString()
+      created_at: user.createdAt.toISOString(),
+      last_login: user.lastLogin?.toISOString()
     };
   }
 

@@ -48,6 +48,7 @@ interface DataContextType {
   deletePaymentMethod: (id: string) => Promise<void>;
   addUser: (user: User) => Promise<void>;
   updateUser: (user: User) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
   addSupplier: (supplier: Supplier) => Promise<void>;
   updateSupplier: (supplier: Supplier) => Promise<void>;
   addExpenseCategory: (category: string) => void;
@@ -955,6 +956,32 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   };
 
+  // ✅ Eliminar usuario
+  const deleteUser = async (id: string) => {
+    try {
+      // No permitir eliminar usuarios mock
+      const isMockUser = mockUsers.find(u => u.id === id);
+      if (isMockUser) {
+        throw new Error('No se pueden eliminar usuarios del sistema');
+      }
+
+      setUsers(prev => {
+        const updated = prev.map(u => u.id === id ? { ...u, isActive: false } : u);
+        const nonMockUsers = updated.filter(u => !mockUsers.find(m => m.id === u.id));
+        localStorage.setItem('cached_users', JSON.stringify(nonMockUsers));
+        return updated;
+      });
+      
+      if (isConnected) {
+        await SupabaseService.deleteUser(id);
+        console.log('Usuario eliminado en Supabase');
+      }
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      throw error;
+    }
+  };
+
   const addSupplier = async (supplier: Supplier) => {
     try {
       setSuppliers(prev => [...prev, supplier]);
@@ -1326,6 +1353,7 @@ export function DataProvider({ children }: DataProviderProps) {
     deletePaymentMethod,
     addUser,
     updateUser,
+    deleteUser,
     addSupplier,
     updateSupplier,
     addExpenseCategory,
