@@ -100,7 +100,8 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
     { name: 'Egresos', id: 'expenses', icon: DollarSign, admin: false },
     { name: 'Cuadre de Caja', id: 'cash-register', icon: Calculator, admin: false },
     { name: 'Estadísticas', id: 'stats', icon: BarChart3, admin: false },
-    { name: 'Administración', id: 'admin', icon: Settings, admin: true },
+    { name: 'Administración', id: 'admin', icon: Settings, admin: true }
+    { name: 'Reporte Financiero', id: 'FinancialReports', icon: Settings, admin: true },
   ];
 
   const filteredNavigation = navigation.filter(item => 
