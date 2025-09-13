@@ -40,7 +40,7 @@ export const MobileCartModal: React.FC<MobileCartModalProps> = ({
         <div className="space-y-2">
           {cart?.length > 0 ? (
             cart.map((item) => {
-              const product = storeProducts?.find((p) => p.id === item.productId);
+              const product = storeProducts?.find((p: any) => p.id === item.productId);
               return (
                 <div
                   key={item.productId}
@@ -82,7 +82,7 @@ export const MobileCartModal: React.FC<MobileCartModalProps> = ({
           >
             <option value="">Seleccionar cliente</option>
             {storeCustomers?.length > 0 ? (
-              storeCustomers.map((c) => (
+              storeCustomers.map((c: any) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

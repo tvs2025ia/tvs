@@ -19,7 +19,7 @@ export const LayawayDetailModal: React.FC<Props> = ({
   const remainingBalance = layaway.total - totalPaid;
   const progress = (totalPaid / layaway.total) * 100;
 
-  const customer = storeCustomers.find(c => c.id === layaway.customerId);
+  const customer = storeCustomers.find((c: any) => c.id === layaway.customerId);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
