@@ -18,6 +18,7 @@ import { Expenses } from './components/Expenses';
 import { CashRegister } from './components/CashRegister';
 import { Statistics } from './components/Statistics';
 import { Admin } from './components/Admin';
+import { FinancialReports } from './components/FinancialReports';
 
 // ✅ Banner de notificación para datos cargándose
 function DataLoadingBanner({ 
@@ -232,6 +233,8 @@ function AppContent() {
           return <Statistics />;
         case 'admin':
           return <Admin />;
+        case 'financialreports':
+          return <FinancialReports />;
         default:
           return <Dashboard onPageChange={setCurrentPage} />;
       }

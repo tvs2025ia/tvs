@@ -1,307 +1,180 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useStore } from '../contexts/StoreContext';
-import { useData } from '../contexts/DataContext';
-import { useOfflineSync } from '../hooks/useOfflineSync';
-import { ProductService } from '../services/productService';
-import { 
-  Menu, 
-  X, 
-  Store, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  Settings,
-  LogOut,
-  DollarSign,
-  FileText,
-  Calculator,
-  ShoppingBag,
-  BarChart3,
-  Home,
-  Bookmark,
-  Cloud,
-  CloudOff,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw
-} from 'lucide-react';
+import React, { useState } from "react";
+import { useStore } from "../contexts/StoreContext";
+import { useData } from "../contexts/DataContext";
+import { useAuth } from "../contexts/AuthContext";
 
-interface LayoutProps {
-  children: React.ReactNode;
-  currentPage: string;
-  onPageChange: (page: string) => void;
-}
+import { MobileCartModal } from "./MobileCartModal";
+import { LayawayDetailModal } from "./LayawayDetailModal";
+import { FloatingCartButton } from "./FloatingCartButton";
 
-export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const { user, logout } = useAuth();
-  const { stores, currentStore, setCurrentStore } = useStore();
-  const { isConnected, refreshData } = useData();
-  const { forceSyncNow, pendingSyncCount } = useOfflineSync();
-  const [syncing, setSyncing] = useState(false);
+import { Package, Clock } from "lucide-react";
 
-  // Detectar tamaño de pantalla
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      
-      if (mobile) {
-        setSidebarCollapsed(true);
-      } else {
-        const savedState = localStorage.getItem('sidebarCollapsed');
-        if (savedState !== null) {
-          setSidebarCollapsed(savedState === 'true');
-        }
+const Layaways: React.FC = () => {
+  const { storeProducts = [], storeLayaways = [], storeCustomers = [] } = useStore();
+  const { createLayaway } = useData();
+  const { currentUser } = useAuth();
+
+  const [cart, setCart] = useState<{ productId: string; quantity: number }[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [showCart, setShowCart] = useState(false);
+  const [viewingLayaway, setViewingLayaway] = useState<any>(null);
+
+  const isMobile = window.innerWidth < 768;
+
+  // --- Funciones ---
+  const addToCart = (productId: string) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.productId === productId);
+      if (existing) {
+        return prev.map((i) =>
+          i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i
+        );
       }
-      
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  // Guardar el estado del sidebar
-  useEffect(() => {
-    if (!isMobile) {
-      localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
-    }
-  }, [sidebarCollapsed, isMobile]);
-
-  // Bloquear scroll cuando el sidebar está abierto en móvil
-  useEffect(() => {
-    if (sidebarOpen && isMobile) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [sidebarOpen, isMobile]);
-
-  const navigation = [
-    { name: 'Dashboard', id: 'dashboard', icon: Home, admin: false },
-    { name: 'Punto de Venta', id: 'pos', icon: ShoppingCart, admin: false },
-    { name: 'Separados', id: 'layaway', icon: Bookmark, admin: false },
-    { name: 'Registro de Ventas', id: 'sales', icon: FileText, admin: false },
-    { name: 'Inventario', id: 'inventory', icon: Package, admin: false },
-    { name: 'Clientes', id: 'customers', icon: Users, admin: false },
-    { name: 'Cotizaciones', id: 'quotes', icon: FileText, admin: false },
-    { name: 'Compras', id: 'purchases', icon: ShoppingBag, admin: false },
-    { name: 'Egresos', id: 'expenses', icon: DollarSign, admin: false },
-    { name: 'Cuadre de Caja', id: 'cash-register', icon: Calculator, admin: false },
-    { name: 'Estadísticas', id: 'stats', icon: BarChart3, admin: false },
-    { name: 'Administración', id: 'admin', icon: Settings, admin: true },
-    { name: 'Reporte Financiero', id: 'FinancialReports', icon: Settings, admin: true }
-  ];
-
-  const filteredNavigation = navigation.filter(item => 
-    !item.admin || (item.admin && user?.role === 'admin')
-  );
-
-  const handleNavigation = (itemId: string) => {
-    onPageChange(itemId);
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
+      return [...prev, { productId, quantity: 1 }];
+    });
   };
 
-  const handleStoreChange = (storeId: string) => {
-    const store = stores.find(s => s.id === storeId);
-    if (store) {
-      setCurrentStore(store);
-    }
+  const removeFromCart = (productId: string) => {
+    setCart((prev) => prev.filter((i) => i.productId !== productId));
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
+  const totalCart = cart.reduce((sum, i) => {
+    const product = storeProducts.find((p) => p.id === i.productId);
+    return sum + (product?.price || 0) * i.quantity;
+  }, 0);
 
-  // ✅ Estado de conexión con botón de sync (unifica OfflineSync + Inventario)
-  const ConnectionStatus = () => {
-    const statusIcon = isConnected ? (
-      <Cloud className="w-4 h-4 text-green-500" />
-    ) : (
-      <CloudOff className="w-4 h-4 text-orange-500" />
-    );
-    
-    const statusText = isConnected ? 'Online' : 'Offline';
-    const statusColor = isConnected ? 'text-green-600' : 'text-orange-600';
+  const handleCreateLayaway = async () => {
+    if (!selectedCustomerId || cart.length === 0 || !currentUser) return;
 
-    const handleManualSync = async () => {
-      setSyncing(true);
-      try {
-        console.log("🔄 Iniciando sincronización completa desde Layout...");
-        // 1. Sincronizar datos offline → online
-        await forceSyncNow();
-        // 2. Sincronizar inventarios desde Supabase
-        await ProductService.syncProductsFromSupabase();
-        // 3. Refrescar datos globales
-        await refreshData();
-        console.log("✅ Sincronización completa finalizada");
-      } catch (error) {
-        console.error("❌ Error en sincronización:", error);
-      } finally {
-        setSyncing(false);
-      }
+    const layawayData = {
+      customerId: selectedCustomerId,
+      items: cart.map((c) => ({
+        productId: c.productId,
+        quantity: c.quantity,
+        price: storeProducts.find((p) => p.id === c.productId)?.price || 0,
+      })),
+      total: totalCart,
+      paid: 0,
+      remainingBalance: totalCart,
+      payments: [],
+      status: "active" as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      storeId: currentUser.storeId,
     };
 
-    return (
-      <div className="flex items-center space-x-2">
-        {statusIcon}
-        <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
-        
-        {/* Botón pequeño de sync */}
-        {isConnected && (
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="p-1 text-blue-600 hover:text-blue-800 disabled:opacity-50"
-            title="Sincronizar ahora"
-          >
-            <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-          </button>
-        )}
-
-        {/* Mostrar pendientes */}
-        {pendingSyncCount > 0 && (
-          <span className="text-xs font-medium text-orange-600">
-            {pendingSyncCount} pendientes
-          </span>
-        )}
-      </div>
-    );
+    await createLayaway(layawayData);
+    setCart([]);
+    setSelectedCustomerId("");
+    setShowCart(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {!isConnected && (
-        <div className="bg-orange-50 border-b border-orange-200 p-3">
-          <div className="flex items-center justify-center space-x-2 text-orange-800">
-            <CloudOff className="w-5 h-5" />
-            <span className="text-sm font-medium">
-              Modo offline activado. Los datos se sincronizarán automáticamente al recuperar la conexión.
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="flex">
-        {/* Overlay móvil */}
-        {sidebarOpen && isMobile && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        <div className={`
-          fixed z-50 lg:z-30 inset-y-0 left-0 transform bg-white border-r border-gray-200 
-          flex flex-col transition-all duration-300 ease-in-out
-          ${sidebarCollapsed ? 'w-16' : 'w-64 xl:w-72'}
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
-            {!sidebarCollapsed && (
-              <h1 className="text-lg font-bold text-gray-800">POS</h1>
-            )}
-            <button 
-              onClick={toggleSidebar}
-              className="p-1 rounded-md hover:bg-gray-100 lg:block hidden"
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="w-5 h-5" />
-              ) : (
-                <ChevronLeft className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-
-          <nav className="flex-1 overflow-y-auto py-4">
-            {filteredNavigation.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleNavigation(item.id)}
-                className={`w-full flex items-center px-4 py-2 text-sm font-medium ${
-                  currentPage === item.id
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                {!sidebarCollapsed && item.name}
-              </button>
-            ))}
-          </nav>
-
-          <div className="border-t border-gray-200 p-4 space-y-2">
-            {!sidebarCollapsed && currentStore && (
-              <div className="flex items-center space-x-2">
-                <Store className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">
-                  {currentStore.name}
-                </span>
-              </div>
-            )}
-            <button
-              onClick={logout}
-              className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              {!sidebarCollapsed && 'Cerrar sesión'}
-            </button>
-          </div>
-        </div>
-
-        {/* Contenido principal */}
-        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? 'lg:pl-16 xl:pl-16' : 'lg:pl-64 xl:pl-72'
-        }`}>
-          {/* Topbar */}
-          <header className="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between">
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 rounded-md hover:bg-gray-100"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-
-            <div className="flex-1 flex justify-end items-center space-x-4">
-              {/* ✅ Selector de tienda disponible para todos */}
-              {stores.length > 0 && (
-                <select
-                  value={currentStore?.id || ''}
-                  onChange={(e) => handleStoreChange(e.target.value)}
-                  className="text-sm border rounded px-2 py-1"
+    <div className="p-4 md:p-6 space-y-6">
+      {/* ======================= */}
+      {/* 1. Lista de separados   */}
+      {/* ======================= */}
+      <div>
+        <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
+          <Clock className="w-5 h-5 text-yellow-600" /> Separados Activos
+        </h2>
+        <div
+          className={`grid gap-4 ${
+            isMobile ? "grid-cols-1" : "grid-cols-2 lg:grid-cols-3"
+          }`}
+        >
+          {storeLayaways?.length > 0 ? (
+            storeLayaways
+              .filter((l) => l.status === "active")
+              .map((layaway) => (
+                <div
+                  key={layaway.id}
+                  className="bg-white rounded-lg border p-3 md:p-4"
                 >
-                  {stores.map(store => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {/* Estado de conexión + botón sync */}
-              <ConnectionStatus />
-            </div>
-          </header>
-
-          <main className="flex-1 p-4 sm:p-6 lg:p-8">
-            {children}
-          </main>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">
+                      {storeCustomers?.find((c) => c.id === layaway.customerId)?.name ||
+                        "Cliente desconocido"}
+                    </span>
+                    <button
+                      onClick={() => setViewingLayaway(layaway)}
+                      className="text-blue-600 text-sm"
+                    >
+                      Ver
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Saldo: ${layaway.remainingBalance}
+                  </p>
+                </div>
+              ))
+          ) : (
+            <p className="text-gray-500 col-span-full">
+              {storeLayaways ? "No hay separados activos" : "Cargando separados..."}
+            </p>
+          )}
         </div>
       </div>
+
+      {/* ======================= */}
+      {/* 2. Productos            */}
+      {/* ======================= */}
+      <div>
+        <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
+          <Package className="w-5 h-5 text-blue-600" /> Productos
+        </h2>
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          {storeProducts?.length > 0 ? (
+            storeProducts.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-lg border p-3 flex flex-col"
+              >
+                <h3 className="font-medium truncate">{product.name}</h3>
+                <p className="text-sm text-gray-500">{product.stock} disponibles</p>
+                <p className="text-sm font-bold mt-1">${product.price}</p>
+                <button
+                  onClick={() => addToCart(product.id)}
+                  className="mt-auto bg-blue-600 text-white rounded-lg py-1 px-2 text-sm hover:bg-blue-700"
+                >
+                  Agregar
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 col-span-full">
+              {storeProducts ? "No hay productos disponibles" : "Cargando productos..."}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Botón flotante */}
+      <FloatingCartButton onClick={() => setShowCart(true)} />
+
+      {/* Modales */}
+      {showCart && (
+        <MobileCartModal
+          cart={cart}
+          removeFromCart={removeFromCart}
+          totalCart={totalCart}
+          selectedCustomerId={selectedCustomerId}
+          setSelectedCustomerId={setSelectedCustomerId}
+          handleCreateLayaway={handleCreateLayaway}
+          closeModal={() => setShowCart(false)}
+        />
+      )}
+
+      {viewingLayaway && (
+        <LayawayDetailModal
+          layaway={viewingLayaway}
+          closeModal={() => setViewingLayaway(null)}
+        />
+      )}
     </div>
   );
-}
+};
+
+// Export default y nombrado para compatibilidad
+export const LayawayComponent = Layaways;
+export default Layaways;
