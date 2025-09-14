@@ -122,190 +122,256 @@ export function CashRegister() {
     return employee ? employee.username : 'Desconocido';
   };
 
-  // NUEVO: Muestra el desglose de ingresos (ventas + abonos) si quieres mostrarlo separado
-  // De momento, solo se muestra el total sumado en los cuadros.
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
+      {/* Header - Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cuadre de Caja</h1>
-          <p className="text-gray-600 mt-1">{currentStore?.name}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Cuadre de Caja</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">{currentStore?.name}</p>
         </div>
         {!currentRegister ? (
           <button
             onClick={() => setShowOpenModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+            className="bg-green-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Abrir Caja</span>
           </button>
         ) : (
           <button
             onClick={() => setShowCloseModal(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+            className="bg-red-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Cerrar Caja</span>
           </button>
         )}
       </div>
 
-      {/* Current Register Status */}
+      {/* Current Register Status - Responsive */}
       {currentRegister ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6">
           <div className="flex items-center mb-4">
-            <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
-            <h3 className="text-lg font-semibold text-green-900">Caja Abierta</h3>
+            <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 mr-2" />
+            <h3 className="text-base sm:text-lg font-semibold text-green-900">Caja Abierta</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-green-600">Apertura</p>
-              <p className="text-xl font-bold text-green-900">{formatCurrency(currentRegister.openingAmount)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3 sm:p-4 rounded-lg">
+              <p className="text-xs sm:text-sm text-green-600">Apertura</p>
+              <p className="text-lg sm:text-xl font-bold text-green-900">{formatCurrency(currentRegister.openingAmount)}</p>
               <p className="text-xs text-green-600">{new Date(currentRegister.openedAt).toLocaleString()}</p>
             </div>
-            <div>
-              <p className="text-sm text-blue-600">Ingresos del turno (ventas + abonos separados)</p>
-              <p className="text-xl font-bold text-blue-900">{formatCurrency(ingresosTurno)}</p>
+            <div className="bg-white p-3 sm:p-4 rounded-lg">
+              <p className="text-xs sm:text-sm text-blue-600">Ingresos del turno</p>
+              <p className="text-lg sm:text-xl font-bold text-blue-900">{formatCurrency(ingresosTurno)}</p>
+              <p className="text-xs text-blue-600">(ventas + abonos)</p>
             </div>
-            <div>
-              <p className="text-sm text-green-600">Esperado</p>
-              <p className="text-xl font-bold text-green-900">{formatCurrency(currentRegister.openingAmount + ingresosTurno - expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}</p>
+            <div className="bg-white p-3 sm:p-4 rounded-lg">
+              <p className="text-xs sm:text-sm text-green-600">Esperado</p>
+              <p className="text-lg sm:text-xl font-bold text-green-900">{formatCurrency(currentRegister.openingAmount + ingresosTurno - expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}</p>
             </div>
-            <div>
-              <p className="text-sm text-green-600">Empleado</p>
-              <p className="text-lg font-medium text-green-900">{getEmployeeName(currentRegister.employeeId)}</p>
+            <div className="bg-white p-3 sm:p-4 rounded-lg">
+              <p className="text-xs sm:text-sm text-green-600">Empleado</p>
+              <p className="text-sm sm:text-lg font-medium text-green-900 truncate">{getEmployeeName(currentRegister.employeeId)}</p>
             </div>
           </div>
-          {/* Mostrar egresos del turno actual */}
-          <div className="mt-4">
-            <p className="text-sm text-red-600">Egresos en este turno:</p>
-            <ul className="text-sm text-gray-700 ml-2">
-              {expensesSinceOpen.length === 0 && <li>No hay egresos registrados.</li>}
-              {expensesSinceOpen.map(e => (
-                <li key={e.id}>
-                  {e.description}: <strong className="text-red-600">{formatCurrency(e.amount)}</strong> ({new Date(e.date).toLocaleString()})
-                </li>
-              ))}
-            </ul>
-            {expensesSinceOpen.length > 0 && (
-              <div className="mt-2 text-sm text-red-700 font-bold">
-                Total egresos del turno: {formatCurrency(expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}
-              </div>
+          
+          {/* Egresos del turno - Responsive */}
+          <div className="mt-4 bg-white p-3 sm:p-4 rounded-lg">
+            <p className="text-xs sm:text-sm text-red-600 font-medium mb-2">Egresos en este turno:</p>
+            {expensesSinceOpen.length === 0 ? (
+              <p className="text-xs sm:text-sm text-gray-500">No hay egresos registrados.</p>
+            ) : (
+              <>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {expensesSinceOpen.map(e => (
+                    <div key={e.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm text-gray-700 border-b pb-1">
+                      <span className="font-medium">{e.description}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                        <span className="font-bold text-red-600">{formatCurrency(e.amount)}</span>
+                        <span className="text-xs text-gray-500">{new Date(e.date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 pt-2 border-t text-xs sm:text-sm text-red-700 font-bold">
+                  Total egresos del turno: {formatCurrency(expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}
+                </div>
+              </>
             )}
           </div>
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6">
           <div className="flex items-center">
-            <AlertCircle className="w-6 h-6 text-yellow-600 mr-2" />
-            <h3 className="text-lg font-semibold text-yellow-900">Caja Cerrada</h3>
+            <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mr-2" />
+            <h3 className="text-base sm:text-lg font-semibold text-yellow-900">Caja Cerrada</h3>
           </div>
-          <p className="text-yellow-700 mt-2">Debes abrir la caja para comenzar a operar.</p>
+          <p className="text-yellow-700 mt-2 text-sm sm:text-base">Debes abrir la caja para comenzar a operar.</p>
         </div>
       )}
 
-      {/* Today's Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      {/* Today's Summary - Responsive Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
           <div className="flex items-center">
-            <TrendingUp className="w-8 h-8 text-green-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Ingresos Hoy (ventas + abonos)</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(todaySalesTotal)}</p>
+            <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mr-3" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Ingresos Hoy</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(todaySalesTotal)}</p>
               <p className="text-xs text-gray-500">{todayMovementSales.length} transacciones</p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
           <div className="flex items-center">
-            <TrendingDown className="w-8 h-8 text-red-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Egresos Hoy</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(todayExpensesTotal)}</p>
+            <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mr-3" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Egresos Hoy</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatCurrency(todayExpensesTotal)}</p>
               <p className="text-xs text-gray-500">{todayExpenses.length} registros</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
           <div className="flex items-center">
-            <DollarSign className="w-8 h-8 text-blue-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Balance Hoy</p>
-              <p className={`text-2xl font-bold ${todaySalesTotal - todayExpensesTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mr-3" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Balance Hoy</p>
+              <p className={`text-lg sm:text-2xl font-bold ${todaySalesTotal - todayExpensesTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatCurrency(todaySalesTotal - todayExpensesTotal)}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
           <div className="flex items-center">
-            <Calculator className="w-8 h-8 text-purple-600 mr-3" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Registros Caja</p>
-              <p className="text-2xl font-bold text-gray-900">{storeRegisters.length}</p>
+            <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 mr-3" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Registros Caja</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{storeRegisters.length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filtros de fecha para historial */}
-      <div className="flex space-x-4 items-center mb-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500">Desde</label>
+      {/* Filtros de fecha - Responsive */}
+      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+        <div className="w-full sm:w-auto">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Desde</label>
           <input
             type="date"
             value={filterStartDate}
             onChange={e => setFilterStartDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500">Hasta</label>
+        <div className="w-full sm:w-auto">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Hasta</label>
           <input
             type="date"
             value={filterEndDate}
             onChange={e => setFilterEndDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
         </div>
       </div>
 
-      {/* Recent Registers - Historial de Cajas */}
+      {/* Historial de Cajas - Responsive Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Historial de Cajas</h3>
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Historial de Cajas</h3>
         </div>
-        <div className="overflow-x-auto">
+        
+        {/* Mobile Cards View */}
+        <div className="block sm:hidden">
+          {filteredRegisters.slice().reverse().map(register => (
+            <div key={register.id} className="border-b border-gray-200 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  register.status === 'open' 
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {register.status === 'open' ? 'Abierta' : 'Cerrada'}
+                </span>
+                <span className="text-xs text-gray-500">{getEmployeeName(register.employeeId)}</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-600">Apertura:</span>
+                  <div className="font-medium">{formatCurrency(register.openingAmount)}</div>
+                  <div className="text-xs text-gray-500">{new Date(register.openedAt).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Esperado:</span>
+                  <div className="font-medium">{register.expectedAmount ? formatCurrency(register.expectedAmount) : '-'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Contado:</span>
+                  <div className="font-medium">{register.closingAmount ? formatCurrency(register.closingAmount) : '-'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Diferencia:</span>
+                  <div className="font-medium">
+                    {register.difference !== undefined ? (
+                      <span className={register.difference === 0 ? 'text-green-600' : register.difference > 0 ? 'text-blue-600' : 'text-red-600'}>
+                        {register.difference > 0 ? '+' : ''}{formatCurrency(register.difference)}
+                      </span>
+                    ) : '-'}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-sm">
+                <span className="text-gray-600">Egresos Turno:</span>
+                <span className="font-bold text-red-600 ml-2">
+                  {register.expensesTurno
+                    ? formatCurrency(
+                        Array.isArray(register.expensesTurno)
+                          ? register.expensesTurno.reduce((sum, e) => sum + (e.amount || 0), 0)
+                          : 0
+                      )
+                    : '-'
+                  }
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Apertura
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cierre
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Usuario
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Esperado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Diferencia
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Egresos Turno
                 </th>
               </tr>
@@ -313,7 +379,7 @@ export function CashRegister() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredRegisters.slice().reverse().map(register => (
                 <tr key={register.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       register.status === 'open' 
                         ? 'bg-green-100 text-green-800'
@@ -322,30 +388,30 @@ export function CashRegister() {
                       {register.status === 'open' ? 'Abierta' : 'Cerrada'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{formatCurrency(register.openingAmount)}</div>
                     <div className="text-sm text-gray-500">{new Date(register.openedAt).toLocaleString()}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {register.closedAt ? new Date(register.closedAt).toLocaleString() : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getEmployeeName(register.employeeId)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {register.expectedAmount ? formatCurrency(register.expectedAmount) : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {register.closingAmount ? formatCurrency(register.closingAmount) : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm">
                     {register.difference !== undefined ? (
                       <span className={register.difference === 0 ? 'text-green-600' : register.difference > 0 ? 'text-blue-600' : 'text-red-600'}>
                         {register.difference > 0 ? '+' : ''}{formatCurrency(register.difference)}
                       </span>
                     ) : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-bold">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-red-600 font-bold">
                     {register.expensesTurno
                       ? formatCurrency(
                           Array.isArray(register.expensesTurno)
@@ -363,20 +429,20 @@ export function CashRegister() {
 
         {filteredRegisters.length === 0 && (
           <div className="text-center py-12">
-            <Calculator className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No hay registros de caja en este rango de fechas</p>
+            <Calculator className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-base sm:text-lg">No hay registros de caja en este rango de fechas</p>
           </div>
         )}
       </div>
 
-      {/* Open Register Modal */}
+      {/* Open Register Modal - Responsive */}
       {showOpenModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Abrir Caja</h3>
+          <div className="bg-white rounded-xl max-w-md w-full mx-4 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Abrir Caja</h3>
               <button onClick={() => setShowOpenModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -389,7 +455,7 @@ export function CashRegister() {
                   type="number"
                   value={openingAmount}
                   onChange={(e) => setOpeningAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   min="0"
                   step="0.01"
                   placeholder="0"
@@ -397,16 +463,16 @@ export function CashRegister() {
                 <p className="text-xs text-gray-500 mt-1">Efectivo inicial en caja</p>
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowOpenModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleOpenRegister}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
                 >
                   Abrir Caja
                 </button>
@@ -416,36 +482,36 @@ export function CashRegister() {
         </div>
       )}
 
-      {/* Close Register Modal */}
+      {/* Close Register Modal - Responsive */}
       {showCloseModal && currentRegister && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Cerrar Caja</h3>
+          <div className="bg-white rounded-xl max-w-md w-full mx-4 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Cerrar Caja</h3>
               <button onClick={() => setShowCloseModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Apertura:</span>
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-lg space-y-2">
+                <div className="flex justify-between items-center text-sm sm:text-base">
+                  <span className="text-gray-600">Apertura:</span>
                   <span className="font-medium">{formatCurrency(currentRegister.openingAmount)}</span>
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Ingresos del turno:</span>
+                <div className="flex justify-between items-center text-sm sm:text-base">
+                  <span className="text-gray-600">Ingresos del turno:</span>
                   <span className="font-medium text-blue-600">{formatCurrency(ingresosTurno)}</span>
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Egresos del turno:</span>
+                <div className="flex justify-between items-center text-sm sm:text-base">
+                  <span className="text-gray-600">Egresos del turno:</span>
                   <span className="font-medium text-red-600">
                     {formatCurrency(expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Esperado:</span>
-                  <span className="font-medium">{formatCurrency(currentRegister.openingAmount + ingresosTurno - expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}</span>
+                <div className="flex justify-between items-center text-sm sm:text-base border-t pt-2">
+                  <span className="text-gray-600 font-medium">Esperado:</span>
+                  <span className="font-bold">{formatCurrency(currentRegister.openingAmount + ingresosTurno - expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0))}</span>
                 </div>
               </div>
 
@@ -457,7 +523,7 @@ export function CashRegister() {
                   type="number"
                   value={closingAmount}
                   onChange={(e) => setClosingAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   min="0"
                   step="0.01"
                   placeholder="0"
@@ -467,8 +533,8 @@ export function CashRegister() {
 
               {closingAmount > 0 && (
                 <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-blue-600">Diferencia:</span>
+                  <div className="flex justify-between items-center text-sm sm:text-base">
+                    <span className="text-blue-600">Diferencia:</span>
                     <span className={`font-medium ${
                       closingAmount - (currentRegister.openingAmount + ingresosTurno - expensesSinceOpen.reduce((sum, e) => sum + e.amount, 0)) === 0 
                         ? 'text-green-600' 
@@ -483,16 +549,16 @@ export function CashRegister() {
                 </div>
               )}
 
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowCloseModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleCloseRegister}
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
                 >
                   Cerrar Caja
                 </button>
