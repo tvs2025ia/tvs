@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export function LayawayComponent() {
-  const { products, customers, paymentMethods, layaways, addLayaway, addLayawayPayment, updateLayaway } = useData();
+  const { products, customers, paymentMethods, layaways, addLayaway, addLayawayPayment } = useData();
   const { currentStore } = useStore();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,11 +34,10 @@ export function LayawayComponent() {
   const [discount, setDiscount] = useState(0);
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewingLayaway, setViewingLayaway] = useState<Layaway | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLayaway, setPaymentLayaway] = useState<Layaway | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(paymentMethods[0]);
   const [paymentNotes, setPaymentNotes] = useState('');
   const [showCart, setShowCart] = useState(false);
@@ -62,6 +61,20 @@ export function LayawayComponent() {
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  // Función para calcular los totales actualizados de un layaway
+  const calculateLayawayTotals = (layaway: Layaway) => {
+    const totalPaid = layaway.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remainingBalance = layaway.total - totalPaid;
+    const status = remainingBalance <= 0 ? 'completed' : layaway.status;
+    
+    return {
+      ...layaway,
+      totalPaid,
+      remainingBalance: Math.max(0, remainingBalance),
+      status
+    };
   };
 
   const addToCart = (product: Product) => {
@@ -143,7 +156,6 @@ export function LayawayComponent() {
 
     addLayaway(newLayaway);
     clearCart();
-    setShowCreateModal(false);
     setShowCart(false);
     alert('Separado creado exitosamente');
   };
@@ -154,7 +166,9 @@ export function LayawayComponent() {
       return;
     }
 
-    if (Number(paymentAmount) > paymentLayaway.remainingBalance) {
+    const currentLayaway = calculateLayawayTotals(paymentLayaway);
+
+    if (Number(paymentAmount) > currentLayaway.remainingBalance) {
       alert('El monto no puede ser mayor al saldo pendiente');
       return;
     }
@@ -207,6 +221,9 @@ export function LayawayComponent() {
   }) => {
     const customer = storeCustomers.find(c => c.id === layaway.customerId);
     const isOverdue = layaway.dueDate && new Date() > new Date(layaway.dueDate);
+    
+    // Calcular totales actualizados
+    const updatedLayaway = calculateLayawayTotals(layaway);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -231,11 +248,11 @@ export function LayawayComponent() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Estado:</span>
                       <span className={`font-medium ${
-                        layaway.status === 'active' ? 'text-orange-600' :
-                        layaway.status === 'completed' ? 'text-green-600' : 'text-red-600'
+                        updatedLayaway.status === 'active' ? 'text-orange-600' :
+                        updatedLayaway.status === 'completed' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {layaway.status === 'active' ? 'Activo' :
-                         layaway.status === 'completed' ? 'Completado' : 'Cancelado'}
+                        {updatedLayaway.status === 'active' ? 'Activo' :
+                         updatedLayaway.status === 'completed' ? 'Completado' : 'Cancelado'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -259,36 +276,36 @@ export function LayawayComponent() {
                   </div>
                 </div>
 
-                {/* Payment Summary */}
+                {/* Payment Summary - Usando valores calculados */}
                 <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                   <h4 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Resumen de Pagos</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Total:</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(layaway.total)}</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(updatedLayaway.total)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Pagado:</span>
-                      <span className="font-bold text-green-600">{formatCurrency(layaway.totalPaid)}</span>
+                      <span className="font-bold text-green-600">{formatCurrency(updatedLayaway.totalPaid)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Saldo:</span>
-                      <span className="font-bold text-orange-600">{formatCurrency(layaway.remainingBalance)}</span>
+                      <span className="font-bold text-orange-600">{formatCurrency(updatedLayaway.remainingBalance)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3 mt-3">
                       <div 
                         className="bg-green-500 h-2 sm:h-3 rounded-full transition-all duration-300" 
-                        style={{ width: `${(layaway.totalPaid / layaway.total) * 100}%` }}
+                        style={{ width: `${updatedLayaway.total > 0 ? (updatedLayaway.totalPaid / updatedLayaway.total) * 100 : 0}%` }}
                       ></div>
                     </div>
                     <p className="text-xs text-gray-500 text-center">
-                      {((layaway.totalPaid / layaway.total) * 100).toFixed(1)}% completado
+                      {updatedLayaway.total > 0 ? ((updatedLayaway.totalPaid / updatedLayaway.total) * 100).toFixed(1) : 0}% completado
                     </p>
                   </div>
                 </div>
 
                 {/* Add Payment Button */}
-                {layaway.status === 'active' && layaway.remainingBalance > 0 && (
+                {updatedLayaway.status === 'active' && updatedLayaway.remainingBalance > 0 && (
                   <button
                     onClick={() => {
                       setPaymentLayaway(layaway);
@@ -363,9 +380,20 @@ export function LayawayComponent() {
     layaway: Layaway;
     onClose: () => void;
   }) => {
+    // Calcular totales actualizados para el modal
+    const updatedLayaway = calculateLayawayTotals(layaway);
+
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       handleAddPayment();
+    };
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      // Permitir solo números y punto decimal
+      if (/^\d*\.?\d*$/.test(value) || value === '') {
+        setPaymentAmount(value);
+      }
     };
 
     return (
@@ -382,11 +410,11 @@ export function LayawayComponent() {
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs sm:text-sm text-gray-600">Saldo Pendiente:</span>
-                <span className="font-bold text-orange-600 text-sm sm:text-base">{formatCurrency(layaway.remainingBalance)}</span>
+                <span className="font-bold text-orange-600 text-sm sm:text-base">{formatCurrency(updatedLayaway.remainingBalance)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs sm:text-sm text-gray-600">Total Pagado:</span>
-                <span className="font-bold text-green-600 text-sm sm:text-base">{formatCurrency(layaway.totalPaid)}</span>
+                <span className="font-bold text-green-600 text-sm sm:text-base">{formatCurrency(updatedLayaway.totalPaid)}</span>
               </div>
             </div>
 
@@ -395,18 +423,15 @@ export function LayawayComponent() {
                 Monto del Abono *
               </label>
               <input
-                type="number"
+                type="text"
                 value={paymentAmount}
-                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                onChange={handleAmountChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                min="1"
-                max={layaway.remainingBalance}
-                step="1" 
                 placeholder="Monto a abonar"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Máximo: {formatCurrency(layaway.remainingBalance)}
+                Máximo: {formatCurrency(updatedLayaway.remainingBalance)}
               </p>
             </div>
 
@@ -442,7 +467,7 @@ export function LayawayComponent() {
               />
             </div>
 
-            {paymentAmount && Number(paymentAmount) === layaway.remainingBalance && (
+            {paymentAmount && Number(paymentAmount) === updatedLayaway.remainingBalance && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mr-2" />
@@ -699,6 +724,9 @@ export function LayawayComponent() {
                   const customer = storeCustomers.find(c => c.id === layaway.customerId);
                   const isOverdue = layaway.dueDate && new Date() > new Date(layaway.dueDate);
                   
+                  // Calcular totales actualizados para mostrar en las tarjetas
+                  const updatedLayaway = calculateLayawayTotals(layaway);
+                  
                   return (
                     <div key={layaway.id} className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between mb-3">
@@ -714,22 +742,22 @@ export function LayawayComponent() {
                       <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
                         <div className="flex justify-between text-xs sm:text-sm">
                           <span className="text-gray-600">Total:</span>
-                          <span className="font-semibold">{formatCurrency(layaway.total)}</span>
+                          <span className="font-semibold">{formatCurrency(updatedLayaway.total)}</span>
                         </div>
                         <div className="flex justify-between text-xs sm:text-sm">
                           <span className="text-gray-600">Pagado:</span>
-                          <span className="font-semibold text-green-600">{formatCurrency(layaway.totalPaid)}</span>
+                          <span className="font-semibold text-green-600">{formatCurrency(updatedLayaway.totalPaid)}</span>
                         </div>
                         <div className="flex justify-between text-xs sm:text-sm">
                           <span className="text-gray-600">Saldo:</span>
-                          <span className="font-semibold text-orange-600">{formatCurrency(layaway.remainingBalance)}</span>
+                          <span className="font-semibold text-orange-600">{formatCurrency(updatedLayaway.remainingBalance)}</span>
                         </div>
                       </div>
 
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-3 sm:mb-4">
                         <div 
                           className="bg-green-500 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${(layaway.totalPaid / layaway.total) * 100}%` }}
+                          style={{ width: `${updatedLayaway.total > 0 ? (updatedLayaway.totalPaid / updatedLayaway.total) * 100 : 0}%` }}
                         ></div>
                       </div>
 
