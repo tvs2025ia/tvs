@@ -30,6 +30,7 @@ export function Admin() {
     paymentMethods, 
     receiptTemplates, 
     suppliers,
+    expenseCategories,
     addUser, 
     updateUser, 
     deleteUser,
@@ -40,7 +41,9 @@ export function Admin() {
     updateReceiptTemplate,
     deleteReceiptTemplate,
     addSupplier,
-    updateSupplier
+    updateSupplier,
+    addExpenseCategory,
+    deleteExpenseCategory
   } = useData();
   const { stores, addStore, updateStore, deleteStore } = useStore();
   const { user: currentUser } = useAuth();
@@ -56,6 +59,7 @@ export function Admin() {
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<ReceiptTemplate | null>(null);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [newExpenseCategory, setNewExpenseCategory] = useState('');
 
   // ✅ Modal para crear/editar usuarios con contraseña
   const UserModal = ({ user, onClose, onSave }: {
@@ -404,11 +408,149 @@ export function Admin() {
     );
   };
 
+  const ReceiptTemplateModal = ({ template, onClose, onSave }: {
+    template?: ReceiptTemplate;
+    onClose: () => void;
+    onSave: (template: ReceiptTemplate) => void;
+  }) => {
+    const [formData, setFormData] = useState({
+      name: template?.name || '',
+      storeId: template?.storeId || stores[0]?.id || '',
+      headerText: template?.headerText || '*** RECIBO DE VENTA ***\nNombre de la Tienda\nNIT: 123456789-1',
+      footerText: template?.footerText || '¡Gracias por su compra!\nwww.tienda.com',
+      thermalWidth: template?.thermalWidth || 58,
+      fontSize: template?.fontSize || 11,
+      showDate: template?.showDate ?? true,
+      showEmployee: template?.showEmployee ?? true,
+      showCustomer: template?.showCustomer ?? true,
+      showInvoiceNumber: template?.showInvoiceNumber ?? true,
+      showPaymentMethod: template?.showPaymentMethod ?? true,
+      showItemDetails: template?.showItemDetails ?? true,
+      showTotals: template?.showTotals ?? true,
+      isActive: template?.isActive ?? true
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      
+      if (!formData.name || !formData.storeId) {
+        alert('El nombre y la tienda son requeridos');
+        return;
+      }
+
+      const templateData: ReceiptTemplate = {
+        id: template?.id || crypto.randomUUID(),
+        ...formData,
+        showLogo: false,
+        logoUrl: ''
+      };
+
+      onSave(templateData);
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">
+              {template ? 'Editar Plantilla' : 'Nueva Plantilla de Recibo'}
+            </h3>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tienda *</label>
+                <select
+                  value={formData.storeId}
+                  onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Seleccionar tienda</option>
+                  {stores.map(store => (
+                    <option key={store.id} value={store.id}>{store.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Texto del Encabezado</label>
+              <textarea
+                value={formData.headerText}
+                onChange={(e) => setFormData({ ...formData, headerText: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Texto del Pie de Página</label>
+              <textarea
+                value={formData.footerText}
+                onChange={(e) => setFormData({ ...formData, footerText: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="templateActive"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="templateActive" className="ml-2 block text-sm text-gray-700">
+                Plantilla activa
+              </label>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {template ? 'Actualizar' : 'Crear'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const tabs = [
     { id: 'users', name: 'Usuarios', icon: Users },
     { id: 'stores', name: 'Tiendas', icon: StoreIcon },
     { id: 'payments', name: 'Métodos de Pago', icon: CreditCard },
-    { id: 'suppliers', name: 'Proveedores', icon: Truck }
+    { id: 'suppliers', name: 'Proveedores', icon: Truck },
+    { id: 'receipt-templates', name: 'Plantillas de Recibo', icon: FileText },
+    { id: 'expense-categories', name: 'Categorías de Egresos', icon: Settings }
   ];
 
   return (
@@ -721,6 +863,128 @@ export function Admin() {
               </div>
             </div>
           )}
+
+          {/* Tab de Plantillas de Recibo */}
+          {activeTab === 'receipt-templates' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Plantillas de Recibo</h3>
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nueva Plantilla</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tienda</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {receiptTemplates.map(template => {
+                      const templateStore = stores.find(s => s.id === template.storeId);
+                      return (
+                        <tr key={template.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">{template.name}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900">{templateStore?.name || 'N/A'}</td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              template.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {template.isActive ? 'Activa' : 'Inactiva'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setEditingTemplate(template)}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`¿Eliminar plantilla "${template.name}"?`)) {
+                                    deleteReceiptTemplate(template.id);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab de Categorías de Egresos */}
+          {activeTab === 'expense-categories' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Categorías de Egresos</h3>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={newExpenseCategory}
+                    onChange={(e) => setNewExpenseCategory(e.target.value)}
+                    placeholder="Nueva categoría"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newExpenseCategory.trim()) {
+                        addExpenseCategory(newExpenseCategory.trim());
+                        setNewExpenseCategory('');
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {expenseCategories.map(category => (
+                  <div key={category} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                    <span className="font-medium text-gray-900">{category}</span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar categoría "${category}"?`)) {
+                          deleteExpenseCategory(category);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {expenseCategories.length === 0 && (
+                <div className="text-center py-8">
+                  <Settings className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No hay categorías de egresos</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -752,6 +1016,21 @@ export function Admin() {
           store={editingStore}
           onClose={() => setEditingStore(null)}
           onSave={(store) => updateStore(store)}
+        />
+      )}
+
+      {showTemplateModal && (
+        <ReceiptTemplateModal
+          onClose={() => setShowTemplateModal(false)}
+          onSave={(template) => addReceiptTemplate(template)}
+        />
+      )}
+
+      {editingTemplate && (
+        <ReceiptTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onSave={(template) => updateReceiptTemplate(template)}
         />
       )}
     </div>
