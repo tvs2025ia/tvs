@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Layaway, LayawayPayment, PaymentMethod } from '../types';
@@ -54,7 +55,18 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
       if (activePaymentMethods.length > 0) {
         setSelectedPaymentMethod(activePaymentMethods[0]);
       }
+      
+      // Prevenir scroll del body cuando el modal está abierto
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restaurar scroll del body cuando el modal se cierra
+      document.body.style.overflow = 'unset';
     }
+
+    // Cleanup function para restaurar scroll si el componente se desmonta
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, paymentMethods]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,18 +123,50 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
     }
   };
 
+  // Cerrar modal al hacer clic en el backdrop
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && !isProcessing) {
+      onClose();
+    }
+  };
+
+  // Prevenir cierre accidental con Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isProcessing) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, isProcessing, onClose]);
+
   // No renderizar si no está abierto
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-xl w-full max-w-md p-4 sm:p-6">
+  // Renderizar usando Portal para asegurar que esté por encima de todo
+  return createPortal(
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4"
+      style={{ zIndex: 9999 }}
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white rounded-xl w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()} // Prevenir cierre al hacer clic dentro del modal
+      >
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h3 className="text-lg sm:text-xl font-bold text-gray-900">Agregar Abono</h3>
           <button 
             onClick={handleClose} 
             disabled={isProcessing}
-            className="text-gray-500 hover:text-gray-700 p-1 disabled:opacity-50"
+            className="text-gray-500 hover:text-gray-700 p-1 disabled:opacity-50 transition-colors"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -158,6 +202,7 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
               placeholder="Monto a abonar"
               disabled={isProcessing}
               required
+              autoFocus
             />
             <p className="text-xs text-gray-500 mt-1">
               Máximo: {formatCurrency(updatedTotals.remainingBalance)}
@@ -170,7 +215,7 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
               Método de Pago *
             </label>
             <select
-              value={selectedPaymentMethod.id}
+              value={selectedPaymentMethod?.id || ''}
               onChange={(e) => {
                 const method = paymentMethods.find(m => m.id === e.target.value);
                 if (method) setSelectedPaymentMethod(method);
@@ -193,7 +238,7 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
             <textarea
               value={paymentNotes}
               onChange={(e) => setPaymentNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-none"
               rows={3}
               placeholder="Observaciones del abono..."
               disabled={isProcessing}
@@ -204,7 +249,7 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
           {paymentAmount && Number(paymentAmount) === updatedTotals.remainingBalance && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mr-2" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mr-2 flex-shrink-0" />
                 <span className="text-green-800 font-medium text-sm sm:text-base">
                   Este abono completará el separado
                 </span>
@@ -218,14 +263,14 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
               type="button"
               onClick={handleClose}
               disabled={isProcessing}
-              className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={isProcessing}
-              className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              disabled={isProcessing || !paymentAmount || Number(paymentAmount) <= 0}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isProcessing ? (
                 <>
@@ -239,6 +284,7 @@ export function AgregarAbonoLayaway({ layaway, isOpen, onClose, onSuccess, payme
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body // Renderizar directamente en el body
   );
 }
