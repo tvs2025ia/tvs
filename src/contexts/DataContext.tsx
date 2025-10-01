@@ -434,28 +434,6 @@ export function DataProvider({ children }: DataProviderProps) {
         if (layawaysResult) {
           setLayaways(layawaysResult);
           console.log(`Separados cargados: ${layawaysResult.length}`);
-
-          // Cargar movimientos de efectivo de los pagos de layaway
-          const layawayMovements: CashMovement[] = [];
-          layawaysResult.forEach(layaway => {
-            layaway.payments.forEach(payment => {
-              layawayMovements.push({
-                id: `layaway-payment-${payment.id}`,
-                storeId: layaway.storeId,
-                employeeId: payment.employeeId,
-                type: 'sale',
-                amount: payment.amount,
-                description: `Abono separado #${layaway.id}`,
-                date: payment.date,
-                referenceId: layaway.id,
-                paymentMethod: payment.paymentMethod
-              });
-            });
-          });
-          if (layawayMovements.length > 0) {
-            setCashMovements(prev => [...prev, ...layawayMovements]);
-            console.log(`Movimientos de abonos cargados: ${layawayMovements.length}`);
-          }
         }
       } catch (error) {
         console.warn('Error cargando separados:', error);
@@ -1183,34 +1161,25 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const addLayawayPayment = async (layawayId: string, payment: LayawayPayment) => {
-    try {
-      const layaway = layaways.find(l => l.id === layawayId);
-      if (!layaway) {
-        throw new Error('Separado no encontrado');
+    setLayaways(prev => prev.map(layaway => {
+      if (layaway.id === layawayId) {
+        const newTotalPaid = layaway.totalPaid + payment.amount;
+        const newRemainingBalance = layaway.total - newTotalPaid;
+        const newStatus = newRemainingBalance <= 0 ? 'completed' : 'active';
+        
+        return {
+          ...layaway,
+          payments: [...layaway.payments, payment],
+          totalPaid: newTotalPaid,
+          remainingBalance: newRemainingBalance,
+          status: newStatus
+        };
       }
+      return layaway;
+    }));
 
-      if (isConnected) {
-        await SupabaseService.saveLayawayPayment(layawayId, payment);
-        console.log('Abono guardado en Supabase');
-      }
-
-      setLayaways(prev => prev.map(l => {
-        if (l.id === layawayId) {
-          const newTotalPaid = l.totalPaid + payment.amount;
-          const newRemainingBalance = l.total - newTotalPaid;
-          const newStatus = newRemainingBalance <= 0 ? 'completed' : 'active';
-
-          return {
-            ...l,
-            payments: [...l.payments, payment],
-            totalPaid: newTotalPaid,
-            remainingBalance: Math.max(0, newRemainingBalance),
-            status: newStatus
-          };
-        }
-        return l;
-      }));
-
+    const layaway = layaways.find(l => l.id === layawayId);
+    if (layaway) {
       const cashMovement: CashMovement = {
         id: crypto.randomUUID(),
         storeId: layaway.storeId,
@@ -1219,15 +1188,9 @@ export function DataProvider({ children }: DataProviderProps) {
         amount: payment.amount,
         description: `Abono separado #${layawayId}`,
         date: payment.date,
-        referenceId: layawayId,
-        paymentMethod: payment.paymentMethod
+        referenceId: layawayId
       };
       setCashMovements(prev => [...prev, cashMovement]);
-
-      console.log('Abono registrado exitosamente');
-    } catch (error) {
-      console.error('Error guardando abono:', error);
-      throw error;
     }
   };
 
