@@ -22,7 +22,7 @@ export function Incomes() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
 
-  // Calcular ingresos por ventas directas (desde sales)
+  // Ingresos por ventas directas
   const salesIncomes = sales
     .filter(s => s.storeId === currentStore?.id)
     .map(s => ({
@@ -37,7 +37,7 @@ export function Incomes() {
       type: 'sale' as const
     }));
 
-  // Calcular ingresos por abonos de separados (buscar en description ya que type no tiene layaway_payment)
+  // Ingresos por abonos de separados
   const layawayIncomes = cashMovements
     .filter(m => 
       m.storeId === currentStore?.id && 
@@ -51,17 +51,17 @@ export function Incomes() {
       description: m.description,
       amount: m.amount,
       category: 'Abonos de Separados',
-      paymentMethod: 'Efectivo', // Valor por defecto ya que paymentMethod no existe en CashMovement
+      paymentMethod: m.paymentMethod || 'Efectivo',
       date: new Date(m.date),
       employeeId: m.employeeId,
       type: 'layaway' as const
     }));
 
-  // Otros ingresos en efectivo (filtrar solo ventas y movimientos positivos)
+  // Otros ingresos (sin duplicar ventas)
   const otherIncomes = cashMovements
     .filter(m => 
       m.storeId === currentStore?.id && 
-      m.type === 'sale' &&
+      m.type !== 'sale' && // 👈 evita duplicar ventas
       !m.description.toLowerCase().includes('abono') &&
       !m.description.toLowerCase().includes('separado') &&
       m.amount > 0
@@ -72,7 +72,7 @@ export function Incomes() {
       description: m.description,
       amount: m.amount,
       category: 'Otros Ingresos',
-      paymentMethod: 'Efectivo',
+      paymentMethod: m.paymentMethod || 'Efectivo',
       date: new Date(m.date),
       employeeId: m.employeeId,
       type: 'other' as const
@@ -85,11 +85,9 @@ export function Incomes() {
     ...otherIncomes
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Obtener años disponibles desde los datos de ingresos
   const availableYears = [...new Set(allIncomes.map(i => new Date(i.date).getFullYear()))]
     .sort((a, b) => b - a);
 
-  // Definir los meses
   const months = [
     { value: '0', label: 'Enero' },
     { value: '1', label: 'Febrero' },
@@ -105,7 +103,6 @@ export function Incomes() {
     { value: '11', label: 'Diciembre' }
   ];
 
-  // Obtener días disponibles para el mes y año seleccionados
   const getDaysInMonth = () => {
     if (!selectedYear || !selectedMonth) return [];
     const year = parseInt(selectedYear);
@@ -131,26 +128,21 @@ export function Incomes() {
     return matchesSearch && matchesCategory && matchesYear && matchesMonth && matchesDay;
   });
 
-  // Obtener todas las categorías disponibles
   const allCategories = [...new Set([
     'Ventas Directas',
     'Abonos de Separados', 
     'Otros Ingresos'
   ])].sort();
 
-  // Calcular estadísticas basadas en los ingresos filtrados
   const filteredSalesIncomes = filteredIncomes.filter(i => i.type === 'sale');
   const filteredLayawayIncomes = filteredIncomes.filter(i => i.type === 'layaway');
-  const filteredOtherIncomes = filteredIncomes.filter(i => i.type === 'other');
 
-  // Calcular estadísticas del mes actual (sin filtros para mostrar comparativa)
   const thisMonth = new Date();
   const thisMonthIncomes = allIncomes.filter(i => 
     i.date.getMonth() === thisMonth.getMonth() &&
     i.date.getFullYear() === thisMonth.getFullYear()
   );
 
-  // Función para obtener el texto del período filtrado
   const getFilteredPeriodText = () => {
     if (!selectedYear && !selectedMonth && !selectedDay) return 'Total Histórico';
     
@@ -391,7 +383,7 @@ export function Incomes() {
           </button>
         </div>
 
-        {/* Resumen de filtros activos */}
+        {/* Resumen filtros */}
         {(searchTerm || categoryFilter || selectedYear || selectedMonth || selectedDay) && (
           <div className="bg-blue-50 rounded-lg p-3 mt-4">
             <p className="text-blue-700 text-sm font-medium">
@@ -404,93 +396,79 @@ export function Incomes() {
         )}
       </div>
 
-      {/* Incomes List */}
+      {/* Tabla de Ingresos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-full text-sm sm:text-base">
+            <thead className="bg-gray-50 text-xs sm:text-sm">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Descripción
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Categoría
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Método de Pago
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Monto
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Hora
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
                   Tipo
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredIncomes.map(income => {
+            <tbody className="divide-y divide-gray-200">
+              {filteredIncomes.map((income) => {
                 const Icon = getIconForCategory(income.category);
                 return (
-                  <tr key={income.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Icon className="w-5 h-5 text-gray-400 mr-3" />
-                        <div className="text-sm font-medium text-gray-900">{income.description}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(income.category)}`}>
+                  <tr key={income.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-gray-900">{income.description}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(income.category)}`}>
+                        <Icon className="inline-block w-4 h-4 mr-1" />
                         {income.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {income.paymentMethod || 'N/A'}
-                      </span>
+                    <td className="px-6 py-4 text-gray-900">{income.paymentMethod}</td>
+                    <td className="px-6 py-4 text-green-600 font-medium">{formatCurrency(income.amount)}</td>
+                    <td className="px-6 py-4 text-gray-900">
+                      {income.date.toLocaleDateString('es-CO')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                      +{formatCurrency(income.amount)}
+                    <td className="px-6 py-4 text-gray-900">
+                      {income.date.toLocaleTimeString('es-CO', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {income.date instanceof Date
-                        ? income.date.toLocaleDateString()
-                        : new Date(income.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {income.date instanceof Date
-                        ? income.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : new Date(income.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        income.type === 'sale' ? 'bg-green-100 text-green-800' :
-                        income.type === 'layaway' ? 'bg-blue-100 text-blue-800' :
-                        'bg-purple-100 text-purple-800'
-                      }`}>
-                        {income.type === 'sale' ? 'Venta Directa' :
-                         income.type === 'layaway' ? 'Abono' :
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        {income.type === 'sale' ? 'Venta' : 
+                         income.type === 'layaway' ? 'Abono' : 
                          'Otro'}
                       </span>
                     </td>
                   </tr>
                 );
               })}
+              {filteredIncomes.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    No se encontraron ingresos que coincidan con los filtros seleccionados.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-
-        {filteredIncomes.length === 0 && (
-          <div className="text-center py-12">
-            <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No se encontraron ingresos</p>
-          </div>
-        )}
       </div>
     </div>
   );
