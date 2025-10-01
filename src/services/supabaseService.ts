@@ -376,7 +376,7 @@ export class SupabaseService {
         return [];
       }
 
-      let query = supabase.from('layaways').select('*, layaway_items(*), layaway_payments(*)');
+      let query = supabase.from('layaways').select('*, layaway_payments(*)');
       if (storeId) {
         query = query.eq('store_id', storeId);
       }
@@ -393,12 +393,13 @@ export class SupabaseService {
   }
 
   static async saveLayaway(layaway: Layaway): Promise<Layaway> {
-    const { error: layawayError } = await supabase
+    const { data, error: layawayError } = await supabase
       .from('layaways')
       .upsert({
         id: layaway.id,
         store_id: layaway.storeId,
         customer_id: layaway.customerId,
+        items: layaway.items,
         subtotal: layaway.subtotal,
         discount: layaway.discount,
         total: layaway.total,
@@ -410,13 +411,39 @@ export class SupabaseService {
         due_date: layaway.dueDate?.toISOString(),
         notes: layaway.notes
       })
-      .select()
+      .select('*, layaway_payments(*)')
       .single();
 
     if (layawayError) throw new Error(`Error saving layaway: ${layawayError.message}`);
 
-    // Handle items and payments separately if needed
-    return layaway;
+    return this.mapSupabaseToLayaway(data);
+  }
+
+  static async saveLayawayPayment(layawayId: string, payment: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('layaway_payments')
+      .insert({
+        id: payment.id,
+        layaway_id: layawayId,
+        amount: payment.amount,
+        payment_method: payment.paymentMethod,
+        employee_id: payment.employeeId,
+        notes: payment.notes,
+        date: payment.date.toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Error saving layaway payment: ${error.message}`);
+
+    return {
+      id: data.id,
+      amount: data.amount,
+      paymentMethod: data.payment_method,
+      date: new Date(data.date),
+      employeeId: data.employee_id,
+      notes: data.notes
+    };
   }
 
   // Bulk operations for better performance
@@ -1055,24 +1082,18 @@ export class SupabaseService {
       id: data.id,
       storeId: data.store_id,
       customerId: data.customer_id,
-      items: data.layaway_items?.map((item: any) => ({
-        productId: item.product_id,
-        productName: item.product_name,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        total: item.total
-      })) || [],
-      subtotal: data.subtotal,
-      discount: data.discount,
-      total: data.total,
-      totalPaid: data.total_paid,
-      remainingBalance: data.remaining_balance,
+      items: Array.isArray(data.items) ? data.items : [],
+      subtotal: parseFloat(data.subtotal) || 0,
+      discount: parseFloat(data.discount) || 0,
+      total: parseFloat(data.total) || 0,
+      totalPaid: parseFloat(data.total_paid) || 0,
+      remainingBalance: parseFloat(data.remaining_balance) || 0,
       status: data.status,
       createdAt: new Date(data.created_at),
       employeeId: data.employee_id,
       payments: data.layaway_payments?.map((payment: any) => ({
         id: payment.id,
-        amount: payment.amount,
+        amount: parseFloat(payment.amount),
         paymentMethod: payment.payment_method,
         date: new Date(payment.date),
         employeeId: payment.employee_id,

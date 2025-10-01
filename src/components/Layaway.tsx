@@ -191,23 +191,23 @@ export function LayawayComponent() {
   };
 
   const ProductCard = ({ product }: { product: Product }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-lg border border-gray-200 p-2 sm:p-3 md:p-4 hover:shadow-md transition-shadow">
       <LocalImage
         src={product.imageUrl}
         alt={product.name}
-        className="w-full h-24 sm:h-32 object-cover rounded-lg mb-3"
+        className="w-full h-20 sm:h-24 md:h-32 object-cover rounded-lg mb-2 sm:mb-3"
       />
-      <div className="space-y-2">
-        <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base">{product.name}</h3>
-        <p className="text-xs sm:text-sm text-gray-500">{product.category}</p>
-        <div className="flex justify-between items-center">
-          <span className="text-sm sm:text-lg font-bold text-green-600">{formatCurrency(product.price)}</span>
-          <span className="text-xs sm:text-sm text-gray-500">{product.stock} unidades</span>
+      <div className="space-y-1 sm:space-y-2">
+        <h3 className="font-semibold text-gray-900 truncate text-xs sm:text-sm md:text-base">{product.name}</h3>
+        <p className="text-xs text-gray-500 truncate">{product.category}</p>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+          <span className="text-sm sm:text-base md:text-lg font-bold text-green-600">{formatCurrency(product.price)}</span>
+          <span className="text-xs text-gray-500">{product.stock} unidades</span>
         </div>
         <button
           onClick={() => addToCart(product)}
           disabled={product.stock === 0}
-          className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+          className="w-full bg-orange-600 text-white py-1.5 sm:py-2 rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm md:text-base"
         >
           {product.stock === 0 ? 'Sin Stock' : 'Separar'}
         </button>
@@ -674,18 +674,18 @@ export function LayawayComponent() {
 
       {/* Mobile Cart Overlay */}
       {showCart && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50">
-          <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowCart(false)}>
+          <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-lg font-bold text-gray-900">Nuevo Separado</h2>
               <button
                 onClick={() => setShowCart(false)}
-                className="p-2 text-gray-500 hover:text-gray-700"
+                className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="h-full overflow-auto pb-20">
+            <div className="h-[calc(100%-64px)] overflow-auto">
               <CartPanel />
             </div>
           </div>
@@ -795,8 +795,8 @@ export function LayawayComponent() {
 
             {/* Products Grid */}
             <div className="pb-4">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Productos Disponibles</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Productos Disponibles</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {filteredProducts.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}

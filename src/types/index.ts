@@ -152,6 +152,7 @@ export interface CashMovement {
   description: string;
   date: Date;
   referenceId?: string; // ID of related sale, expense, etc.
+  paymentMethod?: string; // Payment method used
 }
 
 export interface ReceiptTemplate {
